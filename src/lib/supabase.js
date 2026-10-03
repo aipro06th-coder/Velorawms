@@ -10,7 +10,13 @@ export function getSupabase() {
 
   if (!supabaseClient) {
     try {
-      supabaseClient = createClient(url, key);
+      supabaseClient = createClient(url, key, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
     } catch (err) {
       console.error('Failed to init Supabase client:', err);
       return null;
@@ -36,3 +42,42 @@ export async function testSupabaseConnection(url, key) {
     return { success: false, tablesCreated: false, error: err.message };
   }
 }
+
+// ----------------- Supabase Auth Helpers -----------------
+
+export async function signInWithEmail(email, password) {
+  const client = getSupabase();
+  if (!client) throw new Error('Supabase client is not configured.');
+  return await client.auth.signInWithPassword({ email, password });
+}
+
+export async function signUpWithEmail(email, password, metadata = {}) {
+  const client = getSupabase();
+  if (!client) throw new Error('Supabase client is not configured.');
+  return await client.auth.signUp({
+    email,
+    password,
+    options: {
+      data: metadata
+    }
+  });
+}
+
+export async function signOutUser() {
+  const client = getSupabase();
+  if (!client) return { error: null };
+  return await client.auth.signOut();
+}
+
+export async function getAuthSession() {
+  const client = getSupabase();
+  if (!client) return { data: { session: null }, error: null };
+  return await client.auth.getSession();
+}
+
+export function onAuthChange(callback) {
+  const client = getSupabase();
+  if (!client) return { data: { subscription: { unsubscribe: () => {} } } };
+  return client.auth.onAuthStateChange(callback);
+}
+

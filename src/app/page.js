@@ -29,10 +29,14 @@ import {
   Menu,
   X,
   Pencil,
-  Trash2
+  Trash2,
+  LogOut,
+  User
 } from 'lucide-react';
 
-import { getSupabase, testSupabaseConnection } from '../lib/supabase';
+import { getSupabase, testSupabaseConnection, signOutUser, getAuthSession, onAuthChange } from '../lib/supabase';
+import AuthScreen from '../components/AuthScreen';
+
 
 // Predefined Categories & Default Size Presets
 export const PRODUCT_CATEGORIES = [
@@ -44,22 +48,22 @@ export const PRODUCT_CATEGORIES = [
     ]
   },
   {
-    label: 'Dishwash Bottle (250ml, 500ml, 1.2L & 4.5L)',
+    label: 'Dishwash Bottle (250ml, 500ml, 1L & 4.5L)',
     sizes: [
       { name: 'Dishwash 250ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
       { name: 'Dishwash 500ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
-      { name: 'Dishwash 1.2 Liter Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
+      { name: 'Dishwash 1 Liter Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
       { name: 'Dishwash 4.5 Liter Can', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
     ]
   },
   {
-    label: 'Bleach Bottle (500ml)',
+    label: 'Bleach Bottle (600ml)',
     sizes: [
-      { name: 'Bleach 500ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
+      { name: 'Bleach 600ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
     ]
   },
   {
-    label: 'Harpic Bottles (500ml & 1000ml)',
+    label: 'Harpic Bottles (600ml & 1000ml)',
     sizes: [
       { name: 'Harpic 500ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
       { name: 'Harpic 1000ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
@@ -76,6 +80,10 @@ export const PRODUCT_CATEGORIES = [
 ];
 
 export default function WarehouseManagementApp() {
+  // Authentication state
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,7 +118,7 @@ export default function WarehouseManagementApp() {
     stickerId: '',
     rawMaterialId: '',
     bottleQty: 240,
-    cartonQty: 10,
+    cartonQty: 12,
     stickerQty: 500,
     rawQty: 0,
     purchasePrice: '',
@@ -200,15 +208,88 @@ export default function WarehouseManagementApp() {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
+  // Auth Session Lifecycle & Persistence
+  useEffect(() => {
+    let isMounted = true;
+
+    async function checkAuthSession() {
+      try {
+        // 1. Check local storage for persistent or demo session
+        if (typeof window !== 'undefined') {
+          const cached = localStorage.getItem('velora_auth_user');
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached);
+              if (parsed && isMounted) {
+                setCurrentUser(parsed);
+              }
+            } catch (e) { }
+          }
+        }
+
+        // 2. Check Supabase Auth
+        const { data } = await getAuthSession();
+        if (data?.session?.user && isMounted) {
+          setCurrentUser(data.session.user);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('velora_auth_user', JSON.stringify(data.session.user));
+          }
+        }
+      } catch (err) {
+        console.warn('Error checking auth session:', err);
+      } finally {
+        if (isMounted) {
+          setAuthLoading(false);
+        }
+      }
+    }
+
+    checkAuthSession();
+
+    const { data: authSub } = onAuthChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setCurrentUser(session.user);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('velora_auth_user', JSON.stringify(session.user));
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('velora_auth_user');
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      if (authSub?.subscription) {
+        authSub.subscription.unsubscribe();
+      }
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+    } catch (e) {
+      console.warn('Logout error:', e);
+    }
+    setCurrentUser(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('velora_auth_user');
+    }
+    showToast('👋 Successfully logged out.');
+  };
+
   // 1. Load from localStorage on client mount if available (and purge seeded factory data)
   useEffect(() => {
     try {
       const isSeededId = (id) => {
         const s = String(id || '');
         return s.startsWith('prod-sweep') || s.startsWith('prod-dishwash') || s.startsWith('prod-bleach') || s.startsWith('prod-harpic') ||
-               s.startsWith('size-sweep') || s.startsWith('size-dish') || s.startsWith('size-bleach') || s.startsWith('size-harpic') ||
-               s.startsWith('raw-hcl') || s.startsWith('raw-dish') || s.startsWith('raw-bleach') || s.startsWith('raw-harpic') ||
-               s.startsWith('raw-btl') || s.startsWith('raw-can') || s.startsWith('raw-ctn') || s.startsWith('raw-stk');
+          s.startsWith('size-sweep') || s.startsWith('size-dish') || s.startsWith('size-bleach') || s.startsWith('size-harpic') ||
+          s.startsWith('raw-hcl') || s.startsWith('raw-dish') || s.startsWith('raw-bleach') || s.startsWith('raw-harpic') ||
+          s.startsWith('raw-btl') || s.startsWith('raw-can') || s.startsWith('raw-ctn') || s.startsWith('raw-stk');
       };
 
       const savedProds = localStorage.getItem('wms_products');
@@ -228,7 +309,7 @@ export default function WarehouseManagementApp() {
         try {
           const parsed = JSON.parse(savedStickers).filter(stk => !isSeededId(stk.id));
           setStickers(parsed);
-        } catch (e) {}
+        } catch (e) { }
       }
 
       const savedRaw = localStorage.getItem('wms_rawMaterials');
@@ -337,9 +418,9 @@ export default function WarehouseManagementApp() {
     const cat = ((p?.category) || '').toLowerCase();
     const name = ((s?.product_name || p?.name) || '').toLowerCase();
     const sz = ((s?.size) || '').toLowerCase();
-    return cat.includes('toilet') || name.includes('toilet') || 
-           cat.includes('sweep') || name.includes('sweep') || sz.includes('sweep') ||
-           cat.includes('tolie') || name.includes('tolie');
+    return cat.includes('toilet') || name.includes('toilet') ||
+      cat.includes('sweep') || name.includes('sweep') || sz.includes('sweep') ||
+      cat.includes('tolie') || name.includes('tolie');
   };
 
   const isDishwashItem = (s, p) => {
@@ -348,8 +429,8 @@ export default function WarehouseManagementApp() {
     const sz = ((s?.size) || '').toLowerCase();
     if (isToiletItem(s, p)) return false;
     return cat.includes('dish') || name.includes('dish') || sz.includes('dish') ||
-           cat.includes('250ml') || sz.includes('250ml') || 
-           (cat.includes('bottle') && !cat.includes('bleach') && !cat.includes('harpic'));
+      cat.includes('250ml') || sz.includes('250ml') ||
+      (cat.includes('bottle') && !cat.includes('bleach') && !cat.includes('harpic'));
   };
 
   const isHarpicItem = (s, p) => {
@@ -486,7 +567,7 @@ export default function WarehouseManagementApp() {
       s.size.toLowerCase().includes(searchQuery.toLowerCase());
 
     const prod = products.find(p => p.id === s.product_id);
-    
+
     let matchesCategory = false;
     if (categoryFilter === 'ALL') {
       matchesCategory = true;
@@ -502,7 +583,7 @@ export default function WarehouseManagementApp() {
       matchesCategory = prod?.category === categoryFilter;
     }
 
-    const matchesSize = sizeFilter === 'ALL' || 
+    const matchesSize = sizeFilter === 'ALL' ||
       s.size === sizeFilter ||
       (sizeFilter === '600ml Bottle' && s.size.toLowerCase().includes('600')) ||
       (sizeFilter === '1.2 Liter Bottle' && (s.size.toLowerCase().includes('1.2') || s.size.toLowerCase().includes('1200'))) ||
@@ -564,8 +645,8 @@ export default function WarehouseManagementApp() {
       purchasePrice: actualType === 'RAW'
         ? (curRaw?.purchase_price !== undefined ? curRaw.purchase_price : '')
         : actualType === 'STICKER'
-        ? (curStk?.purchase_price !== undefined ? curStk.purchase_price : 2.5)
-        : (curSize?.purchase_price !== undefined ? curSize.purchase_price : ''),
+          ? (curStk?.purchase_price !== undefined ? curStk.purchase_price : 2.5)
+          : (curSize?.purchase_price !== undefined ? curSize.purchase_price : ''),
       supplier: suppliers[0]?.company_name || (actualType === 'STICKER' ? (curStk?.supplier || 'Print Pack Suppliers') : 'Direct Delivery'),
       customer: '',
       reference: actualType === 'STICKER' ? `STK-${Math.floor(1000 + Math.random() * 9000)}` : `BATCH-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -1899,10 +1980,10 @@ export default function WarehouseManagementApp() {
     const sizesToUse = (newProductForm.sizes && newProductForm.sizes.length > 0)
       ? newProductForm.sizes
       : [
-          { name: 'Small Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
-          { name: 'Medium Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
-          { name: 'Large Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
-        ];
+        { name: 'Small Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
+        { name: 'Medium Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
+        { name: 'Large Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
+      ];
 
     let createdSizes = sizesToUse.map((s, idx) => {
       const bpc = parseInt(s.bottlesPerCarton, 10) || 24;
@@ -2399,7 +2480,7 @@ export default function WarehouseManagementApp() {
   // Export CSV Report
   const exportCSVReport = () => {
     const headers = ['Category', 'Product / Material', 'Size / Unit', 'Available Qty', 'Cartons / Bori', 'Stickers', 'Purchase Price (Rs.)', 'Selling Price (Rs.)', 'Inventory Value (Rs.)', 'Status'];
-    
+
     const finishedRows = productSizes.map(s => {
       const prod = products.find(p => p.id === s.product_id);
       const val = s.bottle_quantity * s.purchase_price;
@@ -2754,6 +2835,28 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
     setTimeout(() => setIsCopiedSql(false), 2500);
   };
 
+  if (authLoading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', gap: '16px' }}>
+        <div className="auth-logo-badge" style={{ animation: 'authSpin 1.8s linear infinite' }}>
+          <Layers size={28} />
+        </div>
+        <div style={{ fontWeight: 700, color: '#334155', fontSize: '0.95rem' }}>Authenticating Velora WMS...</div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <AuthScreen
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          showToast('✅ Welcome to Velora WMS!');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-container">
       {/* Toast Notification */}
@@ -2789,7 +2892,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
           </div>
           <div>
             <div className="brand-title">Velora WMS</div>
-          
+
           </div>
         </div>
 
@@ -2896,6 +2999,32 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
               <span>{isSupabaseWorking ? 'PostgreSQL Active' : 'ihbnnwdkggayj...'}</span>
             </div>
           </div>
+
+          {currentUser && (
+            <div className="sidebar-user-card">
+              <div className="sidebar-user-left">
+                <div className="user-avatar-circle" style={{ width: 30, height: 30, fontSize: '0.72rem' }}>
+                  {(currentUser.user_metadata?.full_name || currentUser.email || 'Admin').substring(0, 2).toUpperCase()}
+                </div>
+                <div className="user-details-col">
+                  <span className="user-display-name" style={{ fontSize: '0.78rem' }}>
+                    {currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0]}
+                  </span>
+                  <span className="user-role-pill" style={{ fontSize: '0.64rem' }}>
+                    {currentUser.user_metadata?.role || 'Administrator'}
+                  </span>
+                </div>
+              </div>
+              <button
+                className="sidebar-logout-icon-btn"
+                onClick={handleLogout}
+                title="Log Out"
+                aria-label="Log Out"
+              >
+                <LogOut size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -3023,6 +3152,34 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
               <Trash2 size={14} />
               <span>Clear Data</span>
             </button>
+
+            {/* User Profile Badge & Logout Button */}
+            {currentUser && (
+              <>
+                <div className="topbar-user-badge">
+                  <div className="user-avatar-circle">
+                    {(currentUser.user_metadata?.full_name || currentUser.email || 'Admin').substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="user-details-col">
+                    <span className="user-display-name">
+                      {currentUser.user_metadata?.full_name || currentUser.email?.split('@')[0]}
+                    </span>
+                    <span className="user-role-pill">
+                      {currentUser.user_metadata?.role || 'Administrator'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  className="topbar-logout-btn"
+                  onClick={handleLogout}
+                  title="Sign out of Velora WMS"
+                >
+                  <LogOut size={14} />
+                  <span>Log Out</span>
+                </button>
+              </>
+            )}
           </div>
         </header>
 
@@ -3651,13 +3808,12 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
 
                         <div style={{ textAlign: 'right' }}>
                           <span
-                            className={`badge ${
-                              tx.type === 'STOCK_IN' || tx.type === 'RETURN'
-                                ? 'badge-success'
-                                : tx.type === 'STOCK_OUT'
+                            className={`badge ${tx.type === 'STOCK_IN' || tx.type === 'RETURN'
+                              ? 'badge-success'
+                              : tx.type === 'STOCK_OUT'
                                 ? 'badge-info'
                                 : 'badge-danger'
-                            }`}
+                              }`}
                           >
                             {tx.type}
                           </span>
@@ -4173,10 +4329,9 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                         <td><strong>{tx.item}</strong></td>
                         <td>{tx.size !== '—' ? <span className="size-tag small">{tx.size}</span> : '—'}</td>
                         <td>
-                          <span className={`badge ${
-                            tx.type === 'STOCK_IN' || tx.type === 'RETURN' ? 'badge-success' :
+                          <span className={`badge ${tx.type === 'STOCK_IN' || tx.type === 'RETURN' ? 'badge-success' :
                             tx.type === 'STOCK_OUT' ? 'badge-info' : 'badge-danger'
-                          }`}>
+                            }`}>
                             {tx.type}
                           </span>
                         </td>
@@ -4443,15 +4598,15 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                   {stockForm.itemType === 'RAW'
                     ? '🧪 Raw Material Stock In (Chemicals / TSP)'
                     : stockForm.itemType === 'STICKER'
-                    ? '🏷️ Product Stickers & Labels Stock In'
-                    : '📦 Finished Product Stock In'}
+                      ? '🏷️ Product Stickers & Labels Stock In'
+                      : '📦 Finished Product Stock In'}
                 </h3>
                 <p style={{ fontSize: '0.8rem', color: '#64748b', margin: 0 }}>
                   {stockForm.itemType === 'RAW'
                     ? 'Receive bulk raw chemical tankers or TSP bori directly into warehouse inventory'
                     : stockForm.itemType === 'STICKER'
-                    ? 'Receive bottle branding labels, roll stickers, and packaging seals'
-                    : 'Receive finished goods bottles and packaging cartons'}
+                      ? 'Receive bottle branding labels, roll stickers, and packaging seals'
+                      : 'Receive finished goods bottles and packaging cartons'}
                 </p>
               </div>
               <button className="btn btn-secondary btn-sm" onClick={() => setModalType(null)}>✕</button>
