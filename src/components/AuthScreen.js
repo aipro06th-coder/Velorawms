@@ -14,7 +14,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Database,
-  Sparkles,
   Key
 } from 'lucide-react';
 import { signInWithEmail, signUpWithEmail } from '../lib/supabase';
@@ -30,34 +29,6 @@ export default function AuthScreen({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-
-  // Handle Demo / Quick Login
-  const handleDemoLogin = (demoRole = 'Warehouse Administrator') => {
-    setLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('Authenticating as Demo Admin...');
-    
-    setTimeout(() => {
-      const demoUser = {
-        id: 'demo-admin-id-01',
-        email: 'admin@velora-wms.com',
-        user_metadata: {
-          full_name: 'Demo Administrator',
-          role: demoRole
-        },
-        app_metadata: {
-          provider: 'demo'
-        }
-      };
-
-      if (rememberMe && typeof window !== 'undefined') {
-        localStorage.setItem('velora_auth_user', JSON.stringify(demoUser));
-      }
-
-      setLoading(false);
-      onLoginSuccess(demoUser);
-    }, 450);
-  };
 
   // Handle Form Submit
   const handleSubmit = async (e) => {
@@ -87,7 +58,7 @@ export default function AuthScreen({ onLoginSuccess }) {
             throw new Error('Invalid email or password. If you do not have an account, click "Create Account" above.');
           }
           if (error.message.includes('Email not confirmed')) {
-            throw new Error('Please confirm your email address in your inbox before signing in, or use Quick Demo Access.');
+            throw new Error('Please confirm your email address in your inbox before signing in.');
           }
           throw error;
         }
@@ -254,15 +225,6 @@ export default function AuthScreen({ onLoginSuccess }) {
           <div className="auth-field-group">
             <div className="auth-label-row">
               <label className="auth-label">Password</label>
-              {authMode === 'signin' && (
-                <span
-                  className="auth-forgot-link"
-                  onClick={() => handleDemoLogin('Warehouse Administrator')}
-                  title="Click for instant admin access"
-                >
-                  Need quick access?
-                </span>
-              )}
             </div>
             <div className="auth-input-wrapper">
               <Lock size={18} className="auth-input-icon" />
@@ -315,30 +277,6 @@ export default function AuthScreen({ onLoginSuccess }) {
             )}
           </button>
         </form>
-
-        {/* Divider */}
-        <div className="auth-divider">
-          <span>OR QUICK ACCESS</span>
-        </div>
-
-        {/* 1-Click Instant Demo Login */}
-        <button
-          type="button"
-          className="auth-demo-btn"
-          onClick={() => handleDemoLogin('Warehouse Administrator')}
-          disabled={loading}
-        >
-          <div className="auth-demo-left">
-            <div className="auth-demo-icon-wrap">
-              <Sparkles size={16} />
-            </div>
-            <div className="auth-demo-text">
-              <div className="auth-demo-title">⚡ Instant Demo Access (Admin)</div>
-              <div className="auth-demo-subtitle">One-click login with full manager privileges</div>
-            </div>
-          </div>
-          <ArrowRight size={16} className="auth-demo-arrow" />
-        </button>
 
         {/* Footer Security Badges */}
         <div className="auth-security-footer">

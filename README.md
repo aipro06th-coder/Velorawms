@@ -9,7 +9,6 @@ A modern, high-performance Warehouse & Inventory Management System built with **
 - **🔐 Authentication & Access Control**:
   - Secure Login & Registration with Supabase Authentication.
   - Role-based designations (*Warehouse Administrator*, *Warehouse Manager*, *Inventory Specialist*, *Procurement Officer*).
-  - ⚡ 1-Click Instant Demo Admin Access for testing without email delays.
   - Persistent session management with remember me support.
   - User profile badge and secure sign-out in topbar & sidebar.
 - **Dashboard Overview**: Real-time warehouse metrics, stock levels, valuation, and transaction activity.
