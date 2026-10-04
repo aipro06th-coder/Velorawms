@@ -66,6 +66,7 @@ export default function FilledCartonsInventory({
   onDispatchCartons,
   onAdjustCartons,
   onOpenAddProduct,
+  onOpenGatePass,
   showToast
 }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -266,6 +267,19 @@ export default function FilledCartonsInventory({
         </div>
 
         <div className="cartons-header-actions">
+          {onOpenGatePass && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              style={{ background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff' }}
+              onClick={onOpenGatePass}
+              title="Create Outward Gate Pass with 80mm Thermal Print"
+            >
+              <Truck size={16} />
+              <span>Gate Pass & Thermal Print (گیٹ پاس)</span>
+            </button>
+          )}
+
           <button
             type="button"
             className="btn btn-primary btn-sm"

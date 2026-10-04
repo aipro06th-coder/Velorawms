@@ -41,6 +41,7 @@ import BottlesInventory from '../components/BottlesInventory';
 import LabelsInventory from '../components/LabelsInventory';
 import RawMaterialsInventory from '../components/RawMaterialsInventory';
 import EmptyCartonsInventory, { DEFAULT_EMPTY_CARTONS } from '../components/EmptyCartonsInventory';
+import GatePassManager from '../components/GatePassManager';
 
 
 
@@ -148,6 +149,7 @@ export default function WarehouseManagementApp() {
   const [stickers, setStickers] = useState([]);
   const [rawMaterials, setRawMaterials] = useState([]);
   const [emptyCartons, setEmptyCartons] = useState(DEFAULT_EMPTY_CARTONS);
+  const [gatePasses, setGatePasses] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [transactions, setTransactions] = useState([]);
 
@@ -701,6 +703,94 @@ export default function WarehouseManagementApp() {
     showToast(`🗑️ Removed "${targetCarton.name}".`);
   };
 
+  // ----------------- Gate Pass Handlers -----------------
+  const handleIssueGatePass = async (newGatePass) => {
+    try {
+      // 1. Automatically deduct each item's cartons from productSizes
+      const itemsMap = new Map();
+      (newGatePass.items || []).forEach(item => {
+        itemsMap.set(String(item.sizeId), item);
+      });
+
+      setProductSizes(prev => prev.map(s => {
+        const match = itemsMap.get(String(s.id));
+        if (match) {
+          const cutCartons = match.cartonsDispatched;
+          const newCartons = Math.max(0, (s.carton_quantity || 0) - cutCartons);
+          return {
+            ...s,
+            carton_quantity: newCartons,
+            total_sold: (s.total_sold || 0) + match.totalBottlesDispatched
+          };
+        }
+        return s;
+      }));
+
+      // 2. Record detailed transactions for each dispatched product
+      const client = getSupabase();
+      for (const item of (newGatePass.items || [])) {
+        const txId = `TX-GP-${newGatePass.gatePassNo}-${item.sizeId}`;
+        const newTx = {
+          id: txId,
+          type: 'DISPATCH_OUT',
+          item_type: 'FINISHED_CARTON',
+          product_name: item.productName,
+          size: item.sizeName,
+          quantity: item.cartonsDispatched,
+          unit: 'cartons',
+          details: `Gate Pass: ${newGatePass.gatePassNo} to ${newGatePass.customerName}. Vehicle: ${newGatePass.vehicleNo}, Driver: ${newGatePass.driverName}. Dispatched ${item.cartonsDispatched} master cartons (${item.totalBottlesDispatched} bottles).`,
+          performed_by: newGatePass.issuedBy || 'Warehouse Manager',
+          created_at: new Date().toISOString()
+        };
+        setTransactions(prev => [newTx, ...prev]);
+
+        // Supabase cloud sync if connected
+        if (client && isSupabaseWorking) {
+          try {
+            const numId = parseInt(item.sizeId, 10);
+            if (!isNaN(numId)) {
+              const currentSize = productSizes.find(s => String(s.id) === String(item.sizeId));
+              const currentCartons = currentSize ? Number(currentSize.carton_quantity || 0) : 0;
+              const updatedCartons = Math.max(0, currentCartons - item.cartonsDispatched);
+
+              await client.from('inventory').update({
+                cartons: updatedCartons,
+                total_sold: ((currentSize?.total_sold || 0) + item.totalBottlesDispatched),
+                updated_at: new Date().toISOString()
+              }).eq('product_size_id', numId);
+
+              await client.from('inventory_transactions').insert({
+                id: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                transaction_type: 'Stock Out',
+                item_type: 'Finished Product',
+                item_name: item.productName,
+                size_name: item.sizeName,
+                quantity: item.cartonsDispatched,
+                unit: 'cartons',
+                reference_no: newGatePass.gatePassNo,
+                notes: `Gate Pass Dispatch to ${newGatePass.customerName} via Vehicle ${newGatePass.vehicleNo}. Driver: ${newGatePass.driverName}`,
+                performed_by: newGatePass.issuedBy || 'Store Incharge',
+                created_at: new Date().toISOString()
+              });
+            }
+          } catch (dbErr) {
+            console.warn('Supabase Gate Pass sync note:', dbErr);
+          }
+        }
+      }
+
+      showToast(`🚚 Gate Pass ${newGatePass.gatePassNo} issued! -${newGatePass.totalCartons} Cartons automatically cut from stock.`);
+    } catch (err) {
+      console.error('Error issuing Gate Pass:', err);
+      showToast(`Error issuing Gate Pass: ${err.message}`);
+    }
+  };
+
+  const handleDeleteGatePass = (targetGp) => {
+    setGatePasses(prev => prev.filter(gp => gp.id !== targetGp.id));
+    showToast(`🗑️ Removed Gate Pass record ${targetGp.gatePassNo}.`);
+  };
+
   // 1. Load from localStorage on client mount if available (and purge seeded factory data)
   useEffect(() => {
     try {
@@ -753,6 +843,16 @@ export default function WarehouseManagementApp() {
         } catch (e) { }
       }
 
+      const savedGatePasses = localStorage.getItem('wms_gatePasses');
+      if (savedGatePasses) {
+        try {
+          const parsed = JSON.parse(savedGatePasses);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setGatePasses(parsed);
+          }
+        } catch (e) { }
+      }
+
       const savedSups = localStorage.getItem('wms_suppliers');
       if (savedSups) setSuppliers(JSON.parse(savedSups));
 
@@ -774,12 +874,13 @@ export default function WarehouseManagementApp() {
       localStorage.setItem('wms_stickers', JSON.stringify(stickers));
       localStorage.setItem('wms_rawMaterials', JSON.stringify(rawMaterials));
       localStorage.setItem('wms_emptyCartons', JSON.stringify(emptyCartons));
+      localStorage.setItem('wms_gatePasses', JSON.stringify(gatePasses));
       localStorage.setItem('wms_suppliers', JSON.stringify(suppliers));
       localStorage.setItem('wms_transactions', JSON.stringify(transactions));
     } catch (e) {
       console.warn('localStorage save error:', e);
     }
-  }, [products, productSizes, stickers, rawMaterials, emptyCartons, suppliers, transactions]);
+  }, [products, productSizes, stickers, rawMaterials, emptyCartons, gatePasses, suppliers, transactions]);
 
   // Test Supabase connection on mount and auto-fetch live tables
   useEffect(() => {
@@ -3418,6 +3519,17 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
 
           <div className="nav-section-title">Operations</div>
           <div
+            className={`nav-item ${activeTab === 'gate_pass' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('gate_pass'); setMobileMenuOpen(false); }}
+          >
+            <Truck size={18} />
+            <span>Gate Pass (گیٹ پاس)</span>
+            {gatePasses.length > 0 && (
+              <span className="nav-badge info">{gatePasses.length}</span>
+            )}
+          </div>
+
+          <div
             className={`nav-item ${activeTab === 'transactions' ? 'active' : ''}`}
             onClick={() => { setActiveTab('transactions'); setMobileMenuOpen(false); }}
           >
@@ -4344,6 +4456,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
               onDispatchCartons={handleDispatchCartons}
               onAdjustCartons={handleAdjustCartons}
               onOpenAddProduct={() => setModalType('ADD_PRODUCT')}
+              onOpenGatePass={() => setActiveTab('gate_pass')}
               showToast={showToast}
             />
           )}
@@ -4361,6 +4474,21 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
               onDamage={handleDamageEmptyCarton}
               onAddNewCarton={handleAddNewEmptyCarton}
               onDeleteCarton={handleDeleteEmptyCarton}
+              showToast={showToast}
+            />
+          )}
+
+          {/* ========================================================
+              VIEW: GATE PASS MANAGEMENT (گیٹ پاس اور تھرمل پرنٹ)
+             ======================================================== */}
+          {activeTab === 'gate_pass' && (
+            <GatePassManager
+              productSizes={productSizes}
+              gatePasses={gatePasses}
+              setGatePasses={setGatePasses}
+              onIssueGatePass={handleIssueGatePass}
+              onDeleteGatePass={handleDeleteGatePass}
+              currentUser={currentUser}
               showToast={showToast}
             />
           )}
