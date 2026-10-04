@@ -958,7 +958,8 @@ body {
 .size-tag.large { background: #fae8ff; color: #86198f; }
 
 /* Modals */
-.modal-overlay {
+.modal-overlay,
+.modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.55);
@@ -967,12 +968,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 1000;
   padding: 20px;
   animation: fadeIn 0.2s ease-out;
 }
 
-.modal-content {
+.modal-content,
+.modal-card {
   background: #ffffff;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
@@ -983,6 +985,8 @@ body {
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1001;
 }
 
 .modal-header {

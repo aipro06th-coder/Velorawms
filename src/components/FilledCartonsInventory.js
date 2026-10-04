@@ -65,6 +65,7 @@ export default function FilledCartonsInventory({
   onPackCartons,
   onDispatchCartons,
   onAdjustCartons,
+  onOpenAddProduct,
   showToast
 }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -256,7 +257,7 @@ export default function FilledCartonsInventory({
           </div>
           <div>
             <h2 className="cartons-title">
-              Filled Cartons Inventory <span className="cartons-urdu-subtitle">(بھرے ہوئے کارٹن / Packed Goods)</span>
+              Filled Cartons Inventory <span className="cartons-urdu-subtitle">  (Packed Goods)</span>
             </h2>
             <p className="cartons-desc">
               Manage finished products packed into master cartons ready for warehouse storage and customer dispatch.
@@ -266,6 +267,7 @@ export default function FilledCartonsInventory({
 
         <div className="cartons-header-actions">
           <button
+            type="button"
             className="btn btn-primary btn-sm"
             onClick={() => {
               const defaultSize = productSizes[0];
@@ -279,10 +281,11 @@ export default function FilledCartonsInventory({
             title="Set exact physical count of master cartons"
           >
             <SlidersHorizontal size={16} />
-            <span>Set Opening Stock (موجودہ کارٹن درج کریں)</span>
+            <span>Set Opening Stock</span>
           </button>
 
           <button
+            type="button"
             className="btn btn-emerald btn-sm"
             onClick={() => {
               const defaultSize = productSizes[0];
@@ -298,16 +301,17 @@ export default function FilledCartonsInventory({
             }}
           >
             <Plus size={16} />
-            <span>Pack New Cartons </span>
+            <span>Pack New Cartons / Add Stock</span>
           </button>
 
           <button
+            type="button"
             className="btn btn-danger btn-sm"
             onClick={() => {
               const availableSize = productSizes.find((s) => (s.carton_quantity || 0) > 0) || productSizes[0];
               setDispatchForm({
                 sizeId: availableSize ? String(availableSize.id) : '',
-                cartonsToDispatch: 5,
+                cartonsToDispatch: availableSize && (availableSize.carton_quantity || 0) > 0 ? Math.min(availableSize.carton_quantity, 5) : 1,
                 customerName: '',
                 gatePassNo: `GP-${Math.floor(1000 + Math.random() * 9000)}`,
                 notes: ''
@@ -316,7 +320,7 @@ export default function FilledCartonsInventory({
             }}
           >
             <Truck size={16} />
-            <span>Dispatch Cartons </span>
+            <span>Dispatch Cartons</span>
           </button>
         </div>
       </div>
@@ -457,8 +461,9 @@ export default function FilledCartonsInventory({
                     <p style={{ fontSize: '0.86rem', maxWidth: 460, margin: '0 auto 18px', lineHeight: 1.5 }}>
                       Aap ke warehouse me abhi koi bhara hua carton record nahi hai. Naye cartons pack karne ke liye ya mojooda stock enter karne ke liye niche diye gaye buttons istemal karein.
                     </p>
-                    <div style={{ display: 'inline-flex', gap: '10px' }}>
+                    <div style={{ display: 'inline-flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
                       <button
+                        type="button"
                         className="btn btn-primary btn-sm"
                         onClick={() => {
                           const defaultSize = productSizes[0];
@@ -474,6 +479,7 @@ export default function FilledCartonsInventory({
                         <span>+ Set Opening Stock (موجودہ کارٹن درج کریں)</span>
                       </button>
                       <button
+                        type="button"
                         className="btn btn-emerald btn-sm"
                         onClick={() => {
                           const defaultSize = productSizes[0];
@@ -674,8 +680,9 @@ export default function FilledCartonsInventory({
               <p style={{ fontSize: '0.86rem', color: '#64748b', maxWidth: 440, margin: '0 auto 18px', lineHeight: 1.5 }}>
                 Yahan sirf wo packed goods show honge jo aap ne pack kiye hon ya jinka opening stock add kiya ho.
               </p>
-              <div style={{ display: 'inline-flex', gap: '10px' }}>
+              <div style={{ display: 'inline-flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
                 <button
+                  type="button"
                   className="btn btn-primary btn-sm"
                   onClick={() => {
                     const defaultSize = productSizes[0];
@@ -691,6 +698,7 @@ export default function FilledCartonsInventory({
                   <span>+ Set Opening Stock</span>
                 </button>
                 <button
+                  type="button"
                   className="btn btn-emerald btn-sm"
                   onClick={() => {
                     const defaultSize = productSizes[0];
@@ -712,139 +720,139 @@ export default function FilledCartonsInventory({
             </div>
           ) : (
             filteredCartons.map((s) => {
-            const ctns = Number(s.carton_quantity) || 0;
-            const bpc = getBottlesPerCarton(s);
-            const totalBtls = ctns * bpc;
-            const price = Number(s.selling_price) || Number(s.purchase_price) || 0;
-            const cartonPrice = price * bpc;
-            const minStock = Number(s.minimum_stock) || 10;
-            const isLow = ctns > 0 && ctns <= minStock;
-            const isZero = ctns === 0;
+              const ctns = Number(s.carton_quantity) || 0;
+              const bpc = getBottlesPerCarton(s);
+              const totalBtls = ctns * bpc;
+              const price = Number(s.selling_price) || Number(s.purchase_price) || 0;
+              const cartonPrice = price * bpc;
+              const minStock = Number(s.minimum_stock) || 10;
+              const isLow = ctns > 0 && ctns <= minStock;
+              const isZero = ctns === 0;
 
-            return (
-              <div key={s.id} className={`pallet-card ${isLow ? 'pallet-warning' : isZero ? 'pallet-danger' : ''}`}>
-                <div className="pallet-card-top">
-                  <div className="pallet-badge">
-                    <Boxes size={16} />
-                    <span>MASTER CARTON</span>
-                  </div>
-                  <span className={`status-pill ${isZero ? 'danger' : isLow ? 'warning' : 'success'}`}>
-                    {isZero ? '0 Left' : isLow ? 'Low Stock' : 'Sealed & Ready'}
-                  </span>
-                </div>
-
-                <div className="pallet-card-body">
-                  <h3 className="pallet-product-title">{s.product_name}</h3>
-                  <div className="pallet-spec-row">
-                    <span>Size: <strong>{s.size || s.size_name}</strong></span>
-                    <span>Pack: <strong>{bpc} btls/ctn</strong></span>
-                  </div>
-
-                  <div className="pallet-qty-box">
-                    <div className="pallet-qty-col">
-                      <div className="pallet-qty-number">{ctns.toLocaleString()}</div>
-                      <div className="pallet-qty-label">Filled Cartons</div>
+              return (
+                <div key={s.id} className={`pallet-card ${isLow ? 'pallet-warning' : isZero ? 'pallet-danger' : ''}`}>
+                  <div className="pallet-card-top">
+                    <div className="pallet-badge">
+                      <Boxes size={16} />
+                      <span>MASTER CARTON</span>
                     </div>
-                    <div className="pallet-qty-divider" />
-                    <div className="pallet-qty-col">
-                      <div className="pallet-qty-number" style={{ color: '#0284c7' }}>
-                        {totalBtls.toLocaleString()}
+                    <span className={`status-pill ${isZero ? 'danger' : isLow ? 'warning' : 'success'}`}>
+                      {isZero ? '0 Left' : isLow ? 'Low Stock' : 'Sealed & Ready'}
+                    </span>
+                  </div>
+
+                  <div className="pallet-card-body">
+                    <h3 className="pallet-product-title">{s.product_name}</h3>
+                    <div className="pallet-spec-row">
+                      <span>Size: <strong>{s.size || s.size_name}</strong></span>
+                      <span>Pack: <strong>{bpc} btls/ctn</strong></span>
+                    </div>
+
+                    <div className="pallet-qty-box">
+                      <div className="pallet-qty-col">
+                        <div className="pallet-qty-number">{ctns.toLocaleString()}</div>
+                        <div className="pallet-qty-label">Filled Cartons</div>
                       </div>
-                      <div className="pallet-qty-label">Total Bottles</div>
+                      <div className="pallet-qty-divider" />
+                      <div className="pallet-qty-col">
+                        <div className="pallet-qty-number" style={{ color: '#0284c7' }}>
+                          {totalBtls.toLocaleString()}
+                        </div>
+                        <div className="pallet-qty-label">Total Bottles</div>
+                      </div>
+                    </div>
+
+                    <div className="pallet-meta-row">
+                      <div className="pallet-meta-item">
+                        <MapPin size={13} />
+                        <span>{s.pallet_location || 'Warehouse Bay 1'}</span>
+                      </div>
+                      <div className="pallet-meta-item">
+                        <span>Val: <strong>Rs. {Math.round(cartonPrice * ctns).toLocaleString()}</strong></span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="pallet-meta-row">
-                    <div className="pallet-meta-item">
-                      <MapPin size={13} />
-                      <span>{s.pallet_location || 'Warehouse Bay 1'}</span>
-                    </div>
-                    <div className="pallet-meta-item">
-                      <span>Val: <strong>Rs. {Math.round(cartonPrice * ctns).toLocaleString()}</strong></span>
-                    </div>
+                  <div className="pallet-card-actions">
+                    <button
+                      className="btn btn-secondary btn-sm flex-1"
+                      onClick={() => {
+                        setAdjustForm({
+                          sizeId: String(s.id),
+                          cartonQuantity: s.carton_quantity || 0,
+                          reason: 'Physical stock audit / adjustment'
+                        });
+                        setActiveModal('ADJUST');
+                      }}
+                      title="Manually set physical cartons"
+                    >
+                      <SlidersHorizontal size={13} />
+                      <span>Set Stock</span>
+                    </button>
+
+                    <button
+                      className="btn btn-secondary btn-sm flex-1"
+                      onClick={() => {
+                        setSelectedSize(s);
+                        setActiveModal('PRINT_LABEL');
+                      }}
+                    >
+                      <Printer size={13} />
+                      <span>Slip</span>
+                    </button>
+
+                    <button
+                      className="btn btn-emerald btn-sm flex-1"
+                      onClick={() => {
+                        setPackForm({
+                          sizeId: String(s.id),
+                          cartonsToPack: 10,
+                          palletLocation: s.pallet_location || 'Pallet Bay A-01',
+                          batchNo: `LOT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+                          packingDate: new Date().toISOString().split('T')[0],
+                          notes: ''
+                        });
+                        setActiveModal('PACK');
+                      }}
+                    >
+                      <Plus size={13} />
+                      <span>Pack</span>
+                    </button>
+
+                    <button
+                      className="btn btn-danger btn-sm flex-1"
+                      disabled={ctns === 0}
+                      onClick={() => {
+                        setDispatchForm({
+                          sizeId: String(s.id),
+                          cartonsToDispatch: Math.min(ctns, 5),
+                          customerName: '',
+                          gatePassNo: `GP-${Math.floor(1000 + Math.random() * 9000)}`,
+                          notes: ''
+                        });
+                        setActiveModal('DISPATCH');
+                      }}
+                    >
+                      <Truck size={13} />
+                      <span>Dispatch</span>
+                    </button>
                   </div>
                 </div>
-
-                <div className="pallet-card-actions">
-                  <button
-                    className="btn btn-secondary btn-sm flex-1"
-                    onClick={() => {
-                      setAdjustForm({
-                        sizeId: String(s.id),
-                        cartonQuantity: s.carton_quantity || 0,
-                        reason: 'Physical stock audit / adjustment'
-                      });
-                      setActiveModal('ADJUST');
-                    }}
-                    title="Manually set physical cartons"
-                  >
-                    <SlidersHorizontal size={13} />
-                    <span>Set Stock</span>
-                  </button>
-
-                  <button
-                    className="btn btn-secondary btn-sm flex-1"
-                    onClick={() => {
-                      setSelectedSize(s);
-                      setActiveModal('PRINT_LABEL');
-                    }}
-                  >
-                    <Printer size={13} />
-                    <span>Slip</span>
-                  </button>
-
-                  <button
-                    className="btn btn-emerald btn-sm flex-1"
-                    onClick={() => {
-                      setPackForm({
-                        sizeId: String(s.id),
-                        cartonsToPack: 10,
-                        palletLocation: s.pallet_location || 'Pallet Bay A-01',
-                        batchNo: `LOT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-                        packingDate: new Date().toISOString().split('T')[0],
-                        notes: ''
-                      });
-                      setActiveModal('PACK');
-                    }}
-                  >
-                    <Plus size={13} />
-                    <span>Pack</span>
-                  </button>
-
-                  <button
-                    className="btn btn-danger btn-sm flex-1"
-                    disabled={ctns === 0}
-                    onClick={() => {
-                      setDispatchForm({
-                        sizeId: String(s.id),
-                        cartonsToDispatch: Math.min(ctns, 5),
-                        customerName: '',
-                        gatePassNo: `GP-${Math.floor(1000 + Math.random() * 9000)}`,
-                        notes: ''
-                      });
-                      setActiveModal('DISPATCH');
-                    }}
-                  >
-                    <Truck size={13} />
-                    <span>Dispatch</span>
-                  </button>
-                </div>
-              </div>
-            );
-          }))}
+              );
+            }))}
         </div>
       )}
 
       {/* ===================== MODAL 1: PACK NEW CARTONS ===================== */}
       {activeModal === 'PACK' && (
-        <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+        <div className="modal-overlay" onClick={() => setActiveModal(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Boxes size={20} style={{ color: '#059669' }} />
                 <h3>Pack New Filled Cartons (کارٹن پیک کریں)</h3>
               </div>
-              <button className="modal-close-btn" onClick={() => setActiveModal(null)}>
+              <button type="button" className="modal-close-btn" onClick={() => setActiveModal(null)}>
                 <X size={18} />
               </button>
             </div>
@@ -968,14 +976,14 @@ export default function FilledCartonsInventory({
 
       {/* ===================== MODAL 2: DISPATCH CARTONS ===================== */}
       {activeModal === 'DISPATCH' && (
-        <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
+        <div className="modal-overlay" onClick={() => setActiveModal(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Truck size={20} style={{ color: '#ef4444' }} />
                 <h3>Dispatch Cartons (کارٹن ڈسپیچ کریں)</h3>
               </div>
-              <button className="modal-close-btn" onClick={() => setActiveModal(null)}>
+              <button type="button" className="modal-close-btn" onClick={() => setActiveModal(null)}>
                 <X size={18} />
               </button>
             </div>
@@ -992,11 +1000,31 @@ export default function FilledCartonsInventory({
                   >
                     <option value="">-- Choose Product Size --</option>
                     {productSizes.map((s) => (
-                      <option key={s.id} value={s.id} disabled={(s.carton_quantity || 0) === 0}>
-                        {s.product_name} - {s.size || s.size_name} (Stock: {s.carton_quantity || 0} ctns)
+                      <option key={s.id} value={s.id}>
+                        {s.product_name} - {s.size || s.size_name} (Stock: {s.carton_quantity || 0} ctns){(s.carton_quantity || 0) === 0 ? ' [0 IN STOCK]' : ''}
                       </option>
                     ))}
                   </select>
+                  {(() => {
+                    const sel = productSizes.find((s) => String(s.id) === String(dispatchForm.sizeId));
+                    if (sel && (sel.carton_quantity || 0) === 0) {
+                      return (
+                        <div style={{
+                          padding: '10px 14px',
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          borderRadius: '8px',
+                          color: '#b91c1c',
+                          fontSize: '0.84rem',
+                          marginTop: '8px',
+                          fontWeight: 600
+                        }}>
+                          ⚠️ Is item ka warehouse me abhi 0 master carton available hai. Pehle &apos;Set Opening Stock&apos; ya &apos;Pack Cartons&apos; karein.
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 <div className="form-row-2">
@@ -1077,7 +1105,14 @@ export default function FilledCartonsInventory({
                 <button type="button" className="btn btn-secondary" onClick={() => setActiveModal(null)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-danger">
+                <button
+                  type="submit"
+                  className="btn btn-danger"
+                  disabled={(() => {
+                    const sel = productSizes.find((s) => String(s.id) === String(dispatchForm.sizeId));
+                    return !sel || (sel.carton_quantity || 0) === 0;
+                  })()}
+                >
                   <Truck size={16} />
                   <span>Issue & Dispatch Cartons</span>
                 </button>
@@ -1089,14 +1124,14 @@ export default function FilledCartonsInventory({
 
       {/* ===================== MODAL 3: MANUAL CARTON STOCK / ADJUSTMENT ===================== */}
       {activeModal === 'ADJUST' && (
-        <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+        <div className="modal-overlay" onClick={() => setActiveModal(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <SlidersHorizontal size={20} style={{ color: '#0284c7' }} />
                 <h3>Set / Adjust Existing Filled Cartons (موجودہ کارٹن درج کریں)</h3>
               </div>
-              <button className="modal-close-btn" onClick={() => setActiveModal(null)}>
+              <button type="button" className="modal-close-btn" onClick={() => setActiveModal(null)}>
                 <X size={18} />
               </button>
             </div>
@@ -1203,14 +1238,14 @@ export default function FilledCartonsInventory({
 
       {/* ===================== MODAL 4: PRINT MASTER CARTON LABEL ===================== */}
       {activeModal === 'PRINT_LABEL' && selectedSize && (
-        <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+        <div className="modal-overlay" onClick={() => setActiveModal(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Printer size={18} style={{ color: '#0284c7' }} />
                 <h3>Master Carton Label & Shipping Slip</h3>
               </div>
-              <button className="modal-close-btn" onClick={() => setActiveModal(null)}>
+              <button type="button" className="modal-close-btn" onClick={() => setActiveModal(null)}>
                 <X size={18} />
               </button>
             </div>

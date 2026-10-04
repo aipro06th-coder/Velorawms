@@ -364,18 +364,27 @@ export default function WarehouseManagementApp() {
       const client = getSupabase();
       if (client && isSupabaseWorking) {
         try {
-          await client.from('inventory').update({
-            cartons: newCartons,
-            updated_at: new Date().toISOString()
-          }).eq('product_size_id', targetSize.id);
+          const numId = parseInt(targetSize.id, 10);
+          if (!isNaN(numId)) {
+            await client.from('inventory').update({
+              cartons: newCartons,
+              updated_at: new Date().toISOString()
+            }).eq('product_size_id', numId);
 
-          await client.from('inventory_transactions').insert({
-            transaction_type: 'STOCK_IN',
-            product_size_id: targetSize.id,
-            cartons_changed: cartonsToAdd,
-            bottles_changed: packedBottles,
-            notes: `Packed ${cartonsToAdd} cartons. Batch: ${meta.batchNo || 'N/A'}`
-          });
+            await client.from('inventory_transactions').insert({
+              id: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              transaction_type: 'Stock In',
+              item_type: 'Finished Product',
+              item_name: targetSize.product_name,
+              size_name: targetSize.size || targetSize.size_name || 'Standard',
+              quantity: cartonsToAdd,
+              unit: 'cartons',
+              reference_no: meta.batchNo || 'PACK-BATCH',
+              notes: `Packed ${cartonsToAdd} master cartons (${packedBottles} bottles). Batch: ${meta.batchNo || 'N/A'}. Location: ${meta.palletLocation || 'Warehouse Bay'}`,
+              performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Admin',
+              created_at: new Date().toISOString()
+            });
+          }
         } catch (dbErr) {
           console.warn('Supabase carton sync note:', dbErr);
         }
@@ -423,19 +432,28 @@ export default function WarehouseManagementApp() {
       const client = getSupabase();
       if (client && isSupabaseWorking) {
         try {
-          await client.from('inventory').update({
-            cartons: newCartons,
-            total_sold: ((targetSize.total_sold || 0) + dispatchedBottles),
-            updated_at: new Date().toISOString()
-          }).eq('product_size_id', targetSize.id);
+          const numId = parseInt(targetSize.id, 10);
+          if (!isNaN(numId)) {
+            await client.from('inventory').update({
+              cartons: newCartons,
+              total_sold: ((targetSize.total_sold || 0) + dispatchedBottles),
+              updated_at: new Date().toISOString()
+            }).eq('product_size_id', numId);
 
-          await client.from('inventory_transactions').insert({
-            transaction_type: 'STOCK_OUT',
-            product_size_id: targetSize.id,
-            cartons_changed: -cartonsToSub,
-            bottles_changed: -dispatchedBottles,
-            notes: `Dispatched ${cartonsToSub} cartons to ${meta.customerName || 'Customer'}. Gate Pass: ${meta.gatePassNo || ''}`
-          });
+            await client.from('inventory_transactions').insert({
+              id: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+              transaction_type: 'Stock Out',
+              item_type: 'Finished Product',
+              item_name: targetSize.product_name,
+              size_name: targetSize.size || targetSize.size_name || 'Standard',
+              quantity: cartonsToSub,
+              unit: 'cartons',
+              reference_no: meta.gatePassNo || 'GP-DISPATCH',
+              notes: `Dispatched ${cartonsToSub} cartons (${dispatchedBottles} bottles) to ${meta.customerName || 'Customer'}. Gate Pass: ${meta.gatePassNo || ''}`,
+              performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Admin',
+              created_at: new Date().toISOString()
+            });
+          }
         } catch (dbErr) {
           console.warn('Supabase carton dispatch sync note:', dbErr);
         }
@@ -4185,6 +4203,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
               onPackCartons={handlePackCartons}
               onDispatchCartons={handleDispatchCartons}
               onAdjustCartons={handleAdjustCartons}
+              onOpenAddProduct={() => setModalType('ADD_PRODUCT')}
               showToast={showToast}
             />
           )}
