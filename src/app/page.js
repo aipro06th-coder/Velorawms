@@ -37,6 +37,9 @@ import {
 import { getSupabase, testSupabaseConnection, signOutUser, getAuthSession, onAuthChange } from '../lib/supabase';
 import AuthScreen from '../components/AuthScreen';
 import FilledCartonsInventory from '../components/FilledCartonsInventory';
+import BottlesInventory from '../components/BottlesInventory';
+import LabelsInventory from '../components/LabelsInventory';
+import RawMaterialsInventory from '../components/RawMaterialsInventory';
 
 
 
@@ -3176,7 +3179,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
             onClick={() => { setActiveTab('finished'); setMobileMenuOpen(false); }}
           >
             <Package size={18} />
-            <span>Products</span>
+            <span>Bottles Inventory</span>
             {lowStockFinished.length > 0 && (
               <span className="nav-badge danger">{lowStockFinished.length} Low</span>
             )}
@@ -3187,7 +3190,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
             onClick={() => { setActiveTab('cartons'); setMobileMenuOpen(false); }}
           >
             <Boxes size={18} />
-            <span>Filled Cartons </span>
+            <span>Filled Cartons</span>
             {totalCartons > 0 && (
               <span className="nav-badge info">{totalCartons.toLocaleString()} Ctns</span>
             )}
@@ -3198,7 +3201,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
             onClick={() => { setActiveTab('stickers'); setMobileMenuOpen(false); }}
           >
             <Tag size={18} />
-            <span> Stickers Inventory</span>
+            <span>Labels & Stickers</span>
             {lowStockStickers.length > 0 && (
               <span className="nav-badge danger">{lowStockStickers.length} Low</span>
             )}
@@ -4107,90 +4110,29 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
           )}
 
           {/* ========================================================
-              VIEW 2: FINISHED PRODUCTS DETAIL
+              VIEW 2: BOTTLES INVENTORY (بوتلوں کی انوینٹری)
              ======================================================== */}
           {activeTab === 'finished' && (
-            <div className="panel">
-              <div className="panel-header">
-                <div>
-                  <h2 className="panel-title">Finished Products & Sizes Master Table</h2>
-                  <p className="panel-desc">Complete stock metrics for Small, Medium, and Large bottles with carton calculation</p>
-                </div>
-                <button className="btn btn-primary btn-sm" onClick={() => openAddProductModal()}>
-                  <Plus size={14} />
-                  <span>Add Product</span>
-                </button>
-              </div>
-
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Size</th>
-                      <th>Bottles (Avail)</th>
-                      <th>Bottles (Sold)</th>
-                      <th>Cartons</th>
-                      <th>Damaged</th>
-                      <th>Purchase Price</th>
-                      <th>Selling Price</th>
-                      <th>Total Value</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {productSizes.length === 0 ? (
-                      <tr>
-                        <td colSpan="11" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                          No finished products registered yet. Click &quot;Add Product&quot; above to create one.
-                        </td>
-                      </tr>
-                    ) : (
-                      productSizes.map(s => {
-                        const isLow = s.bottle_quantity > 0 && s.bottle_quantity <= s.minimum_stock;
-                        const isOut = s.bottle_quantity <= 0;
-                        return (
-                          <tr key={s.id}>
-                            <td><strong>{s.product_name}</strong></td>
-                            <td><span className={`size-tag ${s.size.toLowerCase()}`}>{s.size}</span></td>
-                            <td><strong style={{ color: isOut ? '#e11d48' : '#0f172a' }}>{s.bottle_quantity}</strong></td>
-                            <td style={{ color: '#64748b' }}>{s.issued_bottles || 0}</td>
-                            <td><strong>{s.carton_quantity}</strong> ({s.carton_quantity * getBottlesPerCarton(s)} btls)</td>
-                            <td style={{ color: '#e11d48' }}>{s.damaged_bottles || 0}</td>
-                            <td>Rs. {s.purchase_price}</td>
-                            <td style={{ color: '#059669', fontWeight: 600 }}>Rs. {s.selling_price}</td>
-                            <td><strong style={{ color: '#0284c7' }}>Rs. {(s.bottle_quantity * s.purchase_price).toLocaleString()}</strong></td>
-                            <td>
-                              {isOut ? <span className="badge badge-danger">Out of Stock</span> : isLow ? <span className="badge badge-warning">Low Stock</span> : <span className="badge badge-success">Available</span>}
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                style={{ padding: '3px 8px', color: '#0284c7', borderColor: '#bae6fd', fontSize: '0.74rem' }}
-                                title="Edit Product Size & Rates"
-                                onClick={() => openEditSizeModal(s)}
-                              >
-                                <Pencil size={12} />
-                                <span>Edit</span>
-                              </button>
-                              <button
-                                className="btn btn-secondary btn-sm"
-                                style={{ padding: '3px 8px', color: '#ef4444', borderColor: '#fecaca', fontSize: '0.74rem', marginLeft: '4px' }}
-                                title="Delete Product Size"
-                                onClick={() => handleDeleteProductSize(s.id)}
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <BottlesInventory
+              productSizes={productSizes}
+              products={products}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              categoryFilter={categoryFilter}
+              setCategoryFilter={setCategoryFilter}
+              sizeFilter={sizeFilter}
+              setSizeFilter={setSizeFilter}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              onStockIn={openStockInModal}
+              onStockOut={openStockOutModal}
+              onNewProduct={() => openAddProductModal()}
+              onEditSize={openEditSizeModal}
+              onDeleteSize={handleDeleteProductSize}
+              onClearAllData={handleClearAllData}
+              onExportCSV={exportCSVReport}
+              showToast={showToast}
+            />
           )}
 
           {/* ========================================================
@@ -4209,383 +4151,73 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
           )}
 
           {/* ========================================================
-              VIEW 3: RAW MATERIALS DETAIL
+              VIEW 3: RAW MATERIALS DETAIL (MODULAR COMPONENT)
              ======================================================== */}
           {activeTab === 'raw' && (
-            <div className="panel">
-              <div className="panel-header">
-                <div>
-                  <h2 className="panel-title">Raw Materials Storage & Stock</h2>
-                  <p className="panel-desc">Bulk chemical storage tracking in Liters and TSP in 25 KG Bori</p>
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="btn btn-emerald btn-sm" onClick={() => openStockInModal('RAW')}>
-                    <Plus size={14} />
-                    <span>+ Stock In Raw Material</span>
-                  </button>
-                  <button className="btn btn-secondary btn-sm" onClick={() => setModalType('ADD_RAW')}>
-                    <Plus size={14} />
-                    <span>New Material</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Material Name</th>
-                      <th>Quantity</th>
-                      <th>Unit of Measure</th>
-                      <th>Minimum Threshold</th>
-                      <th>Purchase Rate</th>
-                      <th>Current Valuation</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rawMaterials.length === 0 ? (
-                      <tr>
-                        <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
-                          No raw materials registered yet. Click &quot;+ Stock In Raw Material&quot; or &quot;New Material&quot; to add raw materials.
-                        </td>
-                      </tr>
-                    ) : (
-                      rawMaterials.map(r => {
-                        const isTSP = r.unit.includes('Bori');
-                        const totalKg = isTSP ? (r.quantity * (r.weight_per_bori_kg || 25)) : 0;
-                        const val = isTSP ? (totalKg * r.purchase_price) : (r.quantity * r.purchase_price);
-
-                        return (
-                          <tr key={r.id}>
-                            <td><strong style={{ fontSize: '1rem', color: '#0f172a' }}>{r.name}</strong></td>
-                            <td>
-                              <strong style={{ fontSize: '1.05rem', color: r.status === 'Low Stock' ? '#d97706' : '#0f172a' }}>
-                                {r.quantity.toLocaleString()}
-                              </strong>
-                              {isTSP && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Total: {totalKg.toLocaleString()} KG</div>}
-                            </td>
-                            <td><span className="code-badge">{r.unit}</span></td>
-                            <td>{r.minimum_stock} {r.unit}</td>
-                            <td>Rs. {r.purchase_price} {isTSP ? '/ KG' : '/ L'}</td>
-                            <td><strong style={{ color: '#059669', fontSize: '1rem' }}>Rs. {val.toLocaleString()}</strong></td>
-                            <td>
-                              <span className={`badge ${r.status === 'Low Stock' ? 'badge-warning' : 'badge-success'}`}>
-                                {r.status}
-                              </span>
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <div style={{ display: 'inline-flex', gap: '6px' }}>
-                                <button
-                                  className="btn btn-emerald btn-sm"
-                                  style={{ padding: '4px 10px', fontSize: '0.78rem' }}
-                                  title="Add incoming stock to this raw material"
-                                  onClick={() => openStockInModal('RAW', r.id)}
-                                >
-                                  <Plus size={12} /> Stock In
-                                </button>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  style={{ padding: '4px 10px', fontSize: '0.78rem' }}
-                                  title="Issue raw material for production"
-                                  onClick={() => openStockOutModal('RAW', r.id)}
-                                >
-                                  <Minus size={12} /> Issue
-                                </button>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  style={{ padding: '4px 8px', color: '#ef4444', borderColor: '#fecaca', fontSize: '0.78rem' }}
-                                  title="Delete raw material"
-                                  onClick={() => handleDeleteRawMaterial(r.id)}
-                                >
-                                  <Trash2 size={12} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <RawMaterialsInventory
+              rawMaterials={rawMaterials}
+              onStockIn={openStockInModal}
+              onStockOut={openStockOutModal}
+              onAddNewMaterial={() => setModalType('ADD_RAW')}
+              onDeleteRawMaterial={handleDeleteRawMaterial}
+              showToast={showToast}
+            />
           )}
 
           {/* ========================================================
-              VIEW 3B: DEDICATED STICKERS & LABELS INVENTORY
+              VIEW 3B: DEDICATED STICKERS & LABELS INVENTORY (MODULAR COMPONENT)
              ======================================================== */}
           {activeTab === 'stickers' && (
-            <div className="panel">
-              <div className="panel-header" style={{ flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h2 className="panel-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Tag size={22} style={{ color: '#7c3aed' }} />
-                    <span>Product Stickers & Branding Labels Inventory</span>
-                  </h2>
-                  <p className="panel-desc">Dedicated stock management for bottle roll stickers, branding labels, and packaging seals</p>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button className="btn btn-emerald btn-sm" onClick={() => openStockInModal('STICKER')}>
-                    <Plus size={14} />
-                    <span>+ Stock In Stickers</span>
-                  </button>
-                  <button className="btn btn-danger btn-sm" onClick={() => openStockOutModal('STICKER')}>
-                    <Minus size={14} />
-                    <span>- Issue Stickers</span>
-                  </button>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => {
-                      setStockForm({
-                        itemType: 'STICKER',
-                        productId: products[0]?.id || '',
-                        sizeId: productSizes[0]?.id || '',
-                        rawMaterialId: '',
-                        bottleQty: 0,
-                        cartonQty: 0,
-                        stickerQty: productSizes[0]?.sticker_quantity || 0,
-                        rawQty: 0,
-                        purchasePrice: 2.5,
-                        supplier: '',
-                        customer: '',
-                        reference: `ADJ-${Math.floor(100 + Math.random() * 900)}`,
-                        reason: 'Physical Sticker Count Audit',
-                        damageType: 'STICKER',
-                        notes: ''
-                      });
-                      setModalType('ADJUSTMENT');
-                    }}
-                  >
-                    <SlidersHorizontal size={14} />
-                    <span>Adjust</span>
-                  </button>
-                  <button
-                    className="btn btn-amber btn-sm"
-                    onClick={() => {
-                      setStockForm({
-                        itemType: 'STICKER',
-                        productId: products[0]?.id || '',
-                        sizeId: productSizes[0]?.id || '',
-                        rawMaterialId: '',
-                        bottleQty: 0,
-                        cartonQty: 0,
-                        stickerQty: 0,
-                        rawQty: 0,
-                        purchasePrice: 2.5,
-                        supplier: '',
-                        customer: '',
-                        reference: `DMG-${Math.floor(100 + Math.random() * 900)}`,
-                        reason: 'Torn Stickers / Roll Defect',
-                        damageType: 'STICKER',
-                        notes: ''
-                      });
-                      setModalType('DAMAGE');
-                    }}
-                  >
-                    <AlertOctagon size={14} />
-                    <span>Damage</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Stickers Category KPI Metrics Cards */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '12px',
-                marginBottom: '20px'
-              }}>
-                <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '10px', padding: '14px 16px' }}>
-                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 800, color: '#7c3aed' }}>
-                    Total Available Stickers
-                  </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#581c87', marginTop: '4px' }}>
-                    {totalStickers.toLocaleString()} <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Pcs</span>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#6b21a8' }}>
-                    Across {productSizes.length} product bottle SKUs
-                  </div>
-                </div>
-
-                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '14px 16px' }}>
-                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 800, color: '#1d4ed8' }}>
-                    Active Sticker Types
-                  </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#1e3a8a', marginTop: '4px' }}>
-                    {productSizes.length} <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>SKUs</span>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#1e40af' }}>
-                    Roll labels & stickers registered
-                  </div>
-                </div>
-
-                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '14px 16px' }}>
-                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 800, color: '#b45309' }}>
-                    Low Stock Alerts
-                  </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#78350f', marginTop: '4px' }}>
-                    {lowStockStickers.length} <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Item(s)</span>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#92400e' }}>
-                    Below minimum buffer threshold
-                  </div>
-                </div>
-
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '14px 16px' }}>
-                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 800, color: '#dc2626' }}>
-                    Damaged / Wasted
-                  </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#991b1b', marginTop: '4px' }}>
-                    {totalDamagedStickers.toLocaleString()} <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Pcs</span>
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: '#b91c1c' }}>
-                    Excluded from active stock
-                  </div>
-                </div>
-              </div>
-
-              {/* Stickers Table */}
-              <div className="table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Sticker / Label Name</th>
-                      <th>Target Product</th>
-                      <th>Bottle Size</th>
-                      <th>Available Stickers</th>
-                      <th>Damaged / Wasted</th>
-                      <th>Min Alert Buffer</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {productSizes.length === 0 ? (
-                      <tr>
-                        <td colSpan="8" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
-                          No product sizes registered yet. Create products first to track their stickers.
-                        </td>
-                      </tr>
-                    ) : (
-                      productSizes.map(s => {
-                        const isLow = (s.sticker_quantity || 0) > 0 && (s.sticker_quantity || 0) <= (s.minimum_stock || 100);
-                        const isOut = (s.sticker_quantity || 0) <= 0;
-                        return (
-                          <tr key={s.id}>
-                            <td>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{
-                                  width: '28px',
-                                  height: '28px',
-                                  borderRadius: '6px',
-                                  background: '#faf5ff',
-                                  color: '#7c3aed',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center'
-                                }}>
-                                  <Tag size={15} />
-                                </div>
-                                <div>
-                                  <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>
-                                    {s.product_name} Label
-                                  </strong>
-                                  <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
-                                    Front & Back Bottle Sticker
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <span style={{ fontWeight: 600, color: '#334155' }}>{s.product_name}</span>
-                            </td>
-                            <td>
-                              <span className={`size-tag ${s.size.toLowerCase()}`}>{s.size}</span>
-                            </td>
-                            <td>
-                              <strong style={{
-                                fontSize: '1.05rem',
-                                color: isOut ? '#e11d48' : isLow ? '#d97706' : '#0f172a'
-                              }}>
-                                {(s.sticker_quantity || 0).toLocaleString()} <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b' }}>Pcs</span>
-                              </strong>
-                            </td>
-                            <td>
-                              <span style={{ color: (s.damaged_stickers || 0) > 0 ? '#e11d48' : '#94a3b8', fontWeight: 600 }}>
-                                {(s.damaged_stickers || 0).toLocaleString()} Pcs
-                              </span>
-                            </td>
-                            <td>
-                              <span style={{ color: '#64748b', fontSize: '0.85rem' }}>
-                                {s.minimum_stock || 100} Pcs
-                              </span>
-                            </td>
-                            <td>
-                              {isOut ? (
-                                <span className="badge badge-danger">Out of Stock</span>
-                              ) : isLow ? (
-                                <span className="badge badge-warning">Low Stock</span>
-                              ) : (
-                                <span className="badge badge-success">In Stock</span>
-                              )}
-                            </td>
-                            <td style={{ textAlign: 'right' }}>
-                              <div style={{ display: 'inline-flex', gap: '4px' }}>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  style={{ padding: '3px 7px', color: '#059669', borderColor: '#a7f3d0', fontSize: '0.74rem' }}
-                                  title="Stock In Stickers"
-                                  onClick={() => openStockInModal('STICKER', s.id)}
-                                >
-                                  <Plus size={12} /> In
-                                </button>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  style={{ padding: '3px 7px', color: '#d97706', borderColor: '#fde68a', fontSize: '0.74rem' }}
-                                  title="Issue Stickers to Production"
-                                  onClick={() => openStockOutModal('STICKER', s.id)}
-                                >
-                                  <Minus size={12} /> Issue
-                                </button>
-                                <button
-                                  className="btn btn-secondary btn-sm"
-                                  style={{ padding: '3px 7px', color: '#e11d48', borderColor: '#fecaca', fontSize: '0.74rem' }}
-                                  title="Record Damaged Stickers"
-                                  onClick={() => {
-                                    setStockForm({
-                                      itemType: 'STICKER',
-                                      productId: s.product_id,
-                                      sizeId: s.id,
-                                      rawMaterialId: '',
-                                      bottleQty: 0,
-                                      cartonQty: 0,
-                                      stickerQty: 0,
-                                      rawQty: 0,
-                                      purchasePrice: 2.5,
-                                      supplier: '',
-                                      customer: '',
-                                      reference: `DMG-${Math.floor(100 + Math.random() * 900)}`,
-                                      reason: 'Torn / Misprint Stickers',
-                                      damageType: 'STICKER',
-                                      notes: ''
-                                    });
-                                    setModalType('DAMAGE');
-                                  }}
-                                >
-                                  <AlertOctagon size={12} /> Damage
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <LabelsInventory
+              stickers={stickers}
+              productSizes={productSizes}
+              products={products}
+              onStockIn={openStockInModal}
+              onStockOut={openStockOutModal}
+              onAddNewSticker={() => setModalType('ADD_STICKER')}
+              onAdjustStickers={() => {
+                setStockForm({
+                  itemType: 'STICKER',
+                  productId: products[0]?.id || '',
+                  sizeId: productSizes[0]?.id || '',
+                  rawMaterialId: '',
+                  bottleQty: 0,
+                  cartonQty: 0,
+                  stickerQty: productSizes[0]?.sticker_quantity || 0,
+                  rawQty: 0,
+                  purchasePrice: 2.5,
+                  supplier: '',
+                  customer: '',
+                  reference: `ADJ-${Math.floor(100 + Math.random() * 900)}`,
+                  reason: 'Physical Sticker Count Audit',
+                  damageType: 'STICKER',
+                  notes: ''
+                });
+                setModalType('ADJUSTMENT');
+              }}
+              onDamageStickers={() => {
+                setStockForm({
+                  itemType: 'STICKER',
+                  productId: products[0]?.id || '',
+                  sizeId: productSizes[0]?.id || '',
+                  rawMaterialId: '',
+                  bottleQty: 0,
+                  cartonQty: 0,
+                  stickerQty: 0,
+                  rawQty: 0,
+                  purchasePrice: 2.5,
+                  supplier: '',
+                  customer: '',
+                  reference: `DMG-${Math.floor(100 + Math.random() * 900)}`,
+                  reason: 'Torn Stickers / Roll Defect',
+                  damageType: 'STICKER',
+                  notes: ''
+                });
+                setModalType('DAMAGE');
+              }}
+              onDeleteSticker={handleDeleteSticker}
+              showToast={showToast}
+            />
           )}
 
           {/* ========================================================
