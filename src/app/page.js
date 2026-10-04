@@ -46,29 +46,29 @@ export const PRODUCT_CATEGORIES = [
     label: 'Sweep / Toilet Cleaner (600ml & 1.2 Liter)',
     sizes: [
       { name: 'Sweep 600ml Bottle', bottlesPerCarton: 12, purchasePrice: '', sellingPrice: '', minStock: '' },
-      { name: 'Toilet 1.2 Liter Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
+      { name: 'Toilet 1.2 Liter Bottle', bottlesPerCarton: 6, purchasePrice: '', sellingPrice: '', minStock: '' }
     ]
   },
   {
     label: 'Dishwash Bottle (250ml, 500ml, 1L & 4.5L)',
     sizes: [
-      { name: 'Dishwash 250ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
-      { name: 'Dishwash 500ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
-      { name: 'Dishwash 1 Liter Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
-      { name: 'Dishwash 4.5 Liter Can', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
+      { name: 'Dishwash 250ml Bottle', bottlesPerCarton: 24, purchasePrice: '', sellingPrice: '', minStock: '' },
+      { name: 'Dishwash 500ml Bottle', bottlesPerCarton: 16, purchasePrice: '', sellingPrice: '', minStock: '' },
+      { name: 'Dishwash 1 Liter Bottle', bottlesPerCarton: 15, purchasePrice: '', sellingPrice: '', minStock: '' },
+      { name: 'Dishwash 4.5 Liter Can', bottlesPerCarton: 4, purchasePrice: '', sellingPrice: '', minStock: '' }
     ]
   },
   {
     label: 'Bleach Bottle (600ml)',
     sizes: [
-      { name: 'Bleach 600ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
+      { name: 'Bleach 600ml Bottle', bottlesPerCarton: 12, purchasePrice: '', sellingPrice: '', minStock: '' }
     ]
   },
   {
     label: 'Harpic Bottles (600ml & 1000ml)',
     sizes: [
-      { name: 'Harpic 500ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
-      { name: 'Harpic 1000ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
+      { name: 'Harpic 500ml Bottle', bottlesPerCarton: 14, purchasePrice: '', sellingPrice: '', minStock: '' },
+      { name: 'Harpic 1000ml Bottle', bottlesPerCarton: 14, purchasePrice: '', sellingPrice: '', minStock: '' }
     ]
   },
   {
@@ -81,20 +81,48 @@ export const PRODUCT_CATEGORIES = [
   }
 ];
 
-// Helper to determine bottles per carton (Small Sweep / Sweep 600ml defaults to 12)
+// Helper to determine bottles per carton based on exact packaging ratios:
+// - Sweep 600ml: 12 bottles/ctn
+// - Sweep 1.2L: 6 bottles/ctn
+// - Dishwash 500ml: 16 bottles/ctn
+// - Dishwash 1L: 15 bottles/ctn
+// - Harpic: 14 bottles/ctn
+// - Bleach 600ml: 12 bottles/ctn
 export const getBottlesPerCarton = (sizeObj, productName = '') => {
   if (!sizeObj) return 24;
   const pName = (sizeObj.product_name || productName || '').toLowerCase();
   const sName = (sizeObj.size || sizeObj.size_name || sizeObj.name || '').toLowerCase();
   const combined = `${pName} ${sName}`;
-  const isSmallSweep = (combined.includes('sweep') || combined.includes('toilet')) &&
-                       (combined.includes('600') || combined.includes('small'));
+
+  // 1. Sweep 600ml / Small Sweep -> 12 bottles
+  if ((combined.includes('sweep') || combined.includes('toilet')) && (combined.includes('600') || combined.includes('small'))) {
+    return 12;
+  }
+  // 2. Sweep 1.2L / Toilet 1.2L -> 6 bottles
+  if ((combined.includes('sweep') || combined.includes('toilet')) && (combined.includes('1.2') || combined.includes('1200') || combined.includes('medium') || combined.includes('large'))) {
+    return 6;
+  }
+  // 3. Dishwash 500ml -> 16 bottles
+  if ((combined.includes('dishwash') || combined.includes('dish') || combined.includes('diswash')) && (combined.includes('500') || combined.includes('medium') || combined.includes('small'))) {
+    return 16;
+  }
+  // 4. Dishwash 1L -> 15 bottles
+  if ((combined.includes('dishwash') || combined.includes('dish') || combined.includes('diswash')) && (combined.includes('1l') || combined.includes('1 l') || combined.includes('1000') || combined.includes('1 liter') || combined.includes('large'))) {
+    return 15;
+  }
+  // 5. Harpic -> 14 bottles
+  if (combined.includes('harpic')) {
+    return 14;
+  }
+  // 6. Bleach 600ml -> 12 bottles
+  if (combined.includes('bleach') || combined.includes('belach')) {
+    return 12;
+  }
 
   const rawVal = Number(sizeObj.bottles_per_carton || sizeObj.bottlesPerCarton);
-  if (isSmallSweep) {
-    return (rawVal && rawVal !== 24) ? rawVal : 12;
-  }
-  return rawVal > 0 ? rawVal : 24;
+  if (rawVal > 0 && rawVal !== 24) return rawVal;
+
+  return 24;
 };
 
 export default function WarehouseManagementApp() {
@@ -500,11 +528,8 @@ export default function WarehouseManagementApp() {
         const parsed = JSON.parse(savedSizes)
           .filter(s => !isSeededId(s.id) && !isSeededId(s.product_id))
           .map(s => {
-            const combined = `${s.product_name || ''} ${s.size || s.size_name || ''}`.toLowerCase();
-            if ((combined.includes('sweep') || combined.includes('toilet')) && (combined.includes('600') || combined.includes('small'))) {
-              return { ...s, bottles_per_carton: 12 };
-            }
-            return s;
+            const bpc = getBottlesPerCarton(s);
+            return { ...s, bottles_per_carton: bpc };
           });
         setProductSizes(parsed);
       }
@@ -2191,10 +2216,10 @@ export default function WarehouseManagementApp() {
       ];
 
     let createdSizes = sizesToUse.map((s, idx) => {
-      const isSmallSweep = ((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('sweep') &&
-        (((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('600') ||
-         ((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('small'));
-      const defaultBpc = isSmallSweep ? 12 : 24;
+      const defaultBpc = getBottlesPerCarton({
+        name: s.name,
+        product_name: newProductForm.name
+      });
       const bpc = parseInt(s.bottlesPerCarton, 10) || defaultBpc;
       const pp = parseFloat(s.purchasePrice) || 0;
       const sp = parseFloat(s.sellingPrice) || 0;
@@ -2241,10 +2266,10 @@ export default function WarehouseManagementApp() {
         // 2. Insert sizes & inventory
         for (let idx = 0; idx < sizesToUse.length; idx++) {
           const s = sizesToUse[idx];
-          const isSmallSweep = ((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('sweep') &&
-            (((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('600') ||
-             ((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('small'));
-          const defaultBpc = isSmallSweep ? 12 : 24;
+          const defaultBpc = getBottlesPerCarton({
+            name: s.name,
+            product_name: newProductForm.name
+          });
           const bpc = parseInt(s.bottlesPerCarton, 10) || defaultBpc;
           const pp = parseFloat(s.purchasePrice) || 0;
           const sp = parseFloat(s.sellingPrice) || 0;
@@ -2503,7 +2528,7 @@ export default function WarehouseManagementApp() {
     const updatedSizeName = editSizeForm.sizeName.trim() || 'Standard';
     const isSmallSweep = ((updatedProdName || '') + ' ' + (updatedSizeName || '')).toLowerCase().includes('sweep') &&
       (((updatedProdName || '') + ' ' + (updatedSizeName || '')).toLowerCase().includes('600') ||
-       ((updatedProdName || '') + ' ' + (updatedSizeName || '')).toLowerCase().includes('small'));
+        ((updatedProdName || '') + ' ' + (updatedSizeName || '')).toLowerCase().includes('small'));
     const defaultBpc = isSmallSweep ? 12 : 24;
     const bpc = parseInt(editSizeForm.bottlesPerCarton, 10) || defaultBpc;
     const pp = parseFloat(editSizeForm.purchasePrice) || 0;
@@ -2794,12 +2819,11 @@ export default function WarehouseManagementApp() {
         setProductSizes(sizesData.map(s => {
           const inv = invData?.find(i => i.product_size_id === s.id) || {};
           const prod = prodData?.find(p => p.id === s.product_id);
-          const isSmallSweep = ((prod ? prod.name : '') + ' ' + (s.size_name || '')).toLowerCase().includes('sweep') &&
-            (((prod ? prod.name : '') + ' ' + (s.size_name || '')).toLowerCase().includes('600') ||
-             ((prod ? prod.name : '') + ' ' + (s.size_name || '')).toLowerCase().includes('small'));
-          const bpc = isSmallSweep
-            ? ((s.bottles_per_carton && Number(s.bottles_per_carton) !== 24) ? Number(s.bottles_per_carton) : 12)
-            : (s.bottles_per_carton || 24);
+          const bpc = getBottlesPerCarton({
+            ...s,
+            product_name: prod ? prod.name : 'Product',
+            size: s.size_name
+          });
           return {
             id: String(s.id),
             product_id: s.product_id,
@@ -3145,7 +3169,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
             onClick={() => { setActiveTab('cartons'); setMobileMenuOpen(false); }}
           >
             <Boxes size={18} />
-            <span>Filled Cartons (بھرے کارٹن)</span>
+            <span>Filled Cartons </span>
             {totalCartons > 0 && (
               <span className="nav-badge info">{totalCartons.toLocaleString()} Ctns</span>
             )}
@@ -3156,7 +3180,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
             onClick={() => { setActiveTab('stickers'); setMobileMenuOpen(false); }}
           >
             <Tag size={18} />
-            <span>🏷️ Stickers Inventory</span>
+            <span> Stickers Inventory</span>
             {lowStockStickers.length > 0 && (
               <span className="nav-badge danger">{lowStockStickers.length} Low</span>
             )}

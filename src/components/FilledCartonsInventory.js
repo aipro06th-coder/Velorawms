@@ -27,11 +27,36 @@ import {
 export const getBottlesPerCarton = (s) => {
   if (!s) return 24;
   const combined = `${s.product_name || ''} ${s.size || s.size_name || s.name || ''}`.toLowerCase();
-  const isSmallSweep = (combined.includes('sweep') || combined.includes('toilet')) &&
-    (combined.includes('600') || combined.includes('small'));
+
+  // 1. Sweep 600ml / Small Sweep -> 12 bottles
+  if ((combined.includes('sweep') || combined.includes('toilet')) && (combined.includes('600') || combined.includes('small'))) {
+    return 12;
+  }
+  // 2. Sweep 1.2L / Toilet 1.2L -> 6 bottles
+  if ((combined.includes('sweep') || combined.includes('toilet')) && (combined.includes('1.2') || combined.includes('1200') || combined.includes('medium') || combined.includes('large'))) {
+    return 6;
+  }
+  // 3. Dishwash 500ml -> 16 bottles
+  if ((combined.includes('dishwash') || combined.includes('dish') || combined.includes('diswash')) && (combined.includes('500') || combined.includes('medium') || combined.includes('small'))) {
+    return 16;
+  }
+  // 4. Dishwash 1L -> 15 bottles
+  if ((combined.includes('dishwash') || combined.includes('dish') || combined.includes('diswash')) && (combined.includes('1l') || combined.includes('1 l') || combined.includes('1000') || combined.includes('1 liter') || combined.includes('large'))) {
+    return 15;
+  }
+  // 5. Harpic -> 14 bottles
+  if (combined.includes('harpic')) {
+    return 14;
+  }
+  // 6. Bleach 600ml -> 12 bottles
+  if (combined.includes('bleach') || combined.includes('belach')) {
+    return 12;
+  }
+
   const raw = Number(s.bottles_per_carton || s.bottlesPerCarton);
-  if (isSmallSweep) return (raw && raw !== 24) ? raw : 12;
-  return raw > 0 ? raw : 24;
+  if (raw > 0 && raw !== 24) return raw;
+
+  return 24;
 };
 
 export default function FilledCartonsInventory({
@@ -124,12 +149,18 @@ export default function FilledCartonsInventory({
       const minStock = Number(s.minimum_stock) || 10;
 
       let matchesStatus = true;
-      if (stockStatusFilter === 'IN_STOCK') {
+      if (stockStatusFilter === 'ALL') {
+        // By default, only show products that have filled cartons (> 0)
+        // so empty/unpacked items do not clutter the section until added
+        matchesStatus = ctns > 0;
+      } else if (stockStatusFilter === 'IN_STOCK') {
         matchesStatus = ctns > minStock;
       } else if (stockStatusFilter === 'LOW_STOCK') {
         matchesStatus = ctns > 0 && ctns <= minStock;
       } else if (stockStatusFilter === 'OUT_OF_STOCK') {
         matchesStatus = ctns === 0;
+      } else if (stockStatusFilter === 'ALL_PRODUCTS') {
+        matchesStatus = true;
       }
 
       return matchesSearch && matchesCategory && matchesStatus;
@@ -376,10 +407,10 @@ export default function FilledCartonsInventory({
             value={stockStatusFilter}
             onChange={(e) => setStockStatusFilter(e.target.value)}
           >
-            <option value="ALL">All Statuses</option>
+            <option value="ALL">Packed Cartons In Stock (&gt; 0 ctns)</option>
             <option value="IN_STOCK">Well Stocked (&gt; 10 ctns)</option>
             <option value="LOW_STOCK">Low Stock (≤ 10 ctns)</option>
-            <option value="OUT_OF_STOCK">Zero Cartons (0 ctns)</option>
+            <option value="ALL_PRODUCTS">All Registered Products (Include 0)</option>
           </select>
 
           <div className="view-mode-toggle">
@@ -420,10 +451,47 @@ export default function FilledCartonsInventory({
             <tbody>
               {filteredCartons.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                    <Boxes size={32} style={{ margin: '0 auto 8px', opacity: 0.4 }} />
-                    <p style={{ fontWeight: 600 }}>No filled cartons match your search criteria.</p>
-                    <p style={{ fontSize: '0.8rem' }}>Click &quot;Pack New Cartons&quot; to add packed goods.</p>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b' }}>
+                    <Boxes size={44} style={{ margin: '0 auto 12px', opacity: 0.35, color: '#0284c7' }} />
+                    <h4 style={{ fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>No Filled Cartons in Warehouse Yet</h4>
+                    <p style={{ fontSize: '0.86rem', maxWidth: 460, margin: '0 auto 18px', lineHeight: 1.5 }}>
+                      Aap ke warehouse me abhi koi bhara hua carton record nahi hai. Naye cartons pack karne ke liye ya mojooda stock enter karne ke liye niche diye gaye buttons istemal karein.
+                    </p>
+                    <div style={{ display: 'inline-flex', gap: '10px' }}>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => {
+                          const defaultSize = productSizes[0];
+                          setAdjustForm({
+                            sizeId: defaultSize ? String(defaultSize.id) : '',
+                            cartonQuantity: defaultSize ? (defaultSize.carton_quantity || 0) : 0,
+                            reason: 'Opening physical stock count'
+                          });
+                          setActiveModal('ADJUST');
+                        }}
+                      >
+                        <SlidersHorizontal size={14} />
+                        <span>+ Set Opening Stock (موجودہ کارٹن درج کریں)</span>
+                      </button>
+                      <button
+                        className="btn btn-emerald btn-sm"
+                        onClick={() => {
+                          const defaultSize = productSizes[0];
+                          setPackForm({
+                            sizeId: defaultSize ? String(defaultSize.id) : '',
+                            cartonsToPack: 10,
+                            palletLocation: 'Pallet Bay A-01',
+                            batchNo: `LOT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+                            packingDate: new Date().toISOString().split('T')[0],
+                            notes: ''
+                          });
+                          setActiveModal('PACK');
+                        }}
+                      >
+                        <Plus size={14} />
+                        <span>+ Pack New Cartons (کارٹن پیک کریں)</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ) : (
@@ -592,7 +660,58 @@ export default function FilledCartonsInventory({
       ) : (
         /* Pallet Grid Cards View */
         <div className="cartons-grid-cards">
-          {filteredCartons.map((s) => {
+          {filteredCartons.length === 0 ? (
+            <div style={{
+              textAlign: 'center',
+              padding: '60px 20px',
+              background: 'white',
+              borderRadius: '12px',
+              border: '1px dashed #cbd5e1',
+              gridColumn: '1 / -1'
+            }}>
+              <Boxes size={48} style={{ margin: '0 auto 12px', opacity: 0.35, color: '#0284c7' }} />
+              <h4 style={{ fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>No Master Cartons in Storage</h4>
+              <p style={{ fontSize: '0.86rem', color: '#64748b', maxWidth: 440, margin: '0 auto 18px', lineHeight: 1.5 }}>
+                Yahan sirf wo packed goods show honge jo aap ne pack kiye hon ya jinka opening stock add kiya ho.
+              </p>
+              <div style={{ display: 'inline-flex', gap: '10px' }}>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    const defaultSize = productSizes[0];
+                    setAdjustForm({
+                      sizeId: defaultSize ? String(defaultSize.id) : '',
+                      cartonQuantity: defaultSize ? (defaultSize.carton_quantity || 0) : 0,
+                      reason: 'Opening physical stock count'
+                    });
+                    setActiveModal('ADJUST');
+                  }}
+                >
+                  <SlidersHorizontal size={14} />
+                  <span>+ Set Opening Stock</span>
+                </button>
+                <button
+                  className="btn btn-emerald btn-sm"
+                  onClick={() => {
+                    const defaultSize = productSizes[0];
+                    setPackForm({
+                      sizeId: defaultSize ? String(defaultSize.id) : '',
+                      cartonsToPack: 10,
+                      palletLocation: 'Pallet Bay A-01',
+                      batchNo: `LOT-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+                      packingDate: new Date().toISOString().split('T')[0],
+                      notes: ''
+                    });
+                    setActiveModal('PACK');
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>+ Pack New Cartons</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            filteredCartons.map((s) => {
             const ctns = Number(s.carton_quantity) || 0;
             const bpc = getBottlesPerCarton(s);
             const totalBtls = ctns * bpc;
@@ -712,7 +831,7 @@ export default function FilledCartonsInventory({
                 </div>
               </div>
             );
-          })}
+          }))}
         </div>
       )}
 
