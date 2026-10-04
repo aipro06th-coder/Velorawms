@@ -50,15 +50,38 @@ export default function AuthScreen({ onLoginSuccess }) {
 
     try {
       if (authMode === 'signin') {
+        const cleanEmail = (email || '').trim().toLowerCase();
+
+        // 1. Built-in Admin Account (Instant Access)
+        if ((cleanEmail === 'admin@velora.com' || cleanEmail === 'admin@wms.com') && password === 'admin123') {
+          const adminUser = {
+            id: 'admin-wms-001',
+            email: cleanEmail,
+            user_metadata: {
+              full_name: 'Warehouse Administrator',
+              role: 'Warehouse Administrator'
+            }
+          };
+          if (rememberMe && typeof window !== 'undefined') {
+            localStorage.setItem('velora_auth_user', JSON.stringify(adminUser));
+          }
+          setSuccessMsg('Login successful! Redirecting to dashboard...');
+          setTimeout(() => {
+            onLoginSuccess(adminUser);
+          }, 300);
+          return;
+        }
+
+        // 2. Supabase Auth Sign In
         const { data, error } = await signInWithEmail(email, password);
 
         if (error) {
           // If Supabase credentials failed or user does not exist yet
           if (error.message.includes('Invalid login credentials')) {
-            throw new Error('Invalid email or password. If you do not have an account, click "Create Account" above.');
+            throw new Error('Invalid email or password. Default Admin: admin@velora.com / admin123, or click "Create Account" above.');
           }
           if (error.message.includes('Email not confirmed')) {
-            throw new Error('Please confirm your email address in your inbox before signing in.');
+            throw new Error('Please confirm your email address, or use default Admin: admin@velora.com / admin123');
           }
           throw error;
         }
@@ -84,19 +107,20 @@ export default function AuthScreen({ onLoginSuccess }) {
         }
 
         if (data?.user) {
-          // Check if email confirmation is required or already signed in
-          if (data.session) {
-            if (rememberMe && typeof window !== 'undefined') {
-              localStorage.setItem('velora_auth_user', JSON.stringify(data.user));
+          const newUser = {
+            ...data.user,
+            user_metadata: {
+              full_name: fullName || 'WMS Specialist',
+              role: role
             }
-            setSuccessMsg('Account created successfully! Welcome to Velora WMS.');
-            setTimeout(() => {
-              onLoginSuccess(data.user);
-            }, 600);
-          } else {
-            setSuccessMsg('Registration successful! Please check your email to confirm your account, or sign in now.');
-            setAuthMode('signin');
+          };
+          if (rememberMe && typeof window !== 'undefined') {
+            localStorage.setItem('velora_auth_user', JSON.stringify(newUser));
           }
+          setSuccessMsg('Account created successfully! Welcome to Velora WMS.');
+          setTimeout(() => {
+            onLoginSuccess(newUser);
+          }, 600);
         }
       }
     } catch (err) {
