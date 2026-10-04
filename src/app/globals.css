@@ -1784,3 +1784,507 @@ body {
   color: #dc2626;
 }
 
+/* ========================================================
+   FILLED CARTONS INVENTORY (بھرے کارٹن) STYLES
+   ======================================================== */
+
+.filled-cartons-section {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.cartons-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #ffffff;
+  padding: 20px 24px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+.cartons-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cartons-icon-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0284c7, #2563eb);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 16px -4px rgba(2, 132, 199, 0.35);
+  flex-shrink: 0;
+}
+
+.cartons-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.cartons-urdu-subtitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0284c7;
+  margin-left: 6px;
+}
+
+.cartons-desc {
+  font-size: 0.84rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.cartons-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* KPI Cards Grid */
+.cartons-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.carton-kpi-card {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-card);
+  border-top: 3px solid var(--card-accent, #0284c7);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.carton-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.carton-kpi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.carton-kpi-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.carton-kpi-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carton-kpi-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.carton-kpi-footer {
+  margin-top: 6px;
+}
+
+.carton-kpi-sub {
+  font-size: 0.74rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+/* Control bar */
+.cartons-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: #ffffff;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+}
+
+.cartons-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 260px;
+}
+
+.cartons-search-input {
+  width: 100%;
+  padding: 9px 12px 9px 36px;
+  font-size: 0.86rem;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  outline: none;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.cartons-search-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+}
+
+.cartons-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cartons-select {
+  padding: 8px 12px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  color: #334155;
+  outline: none;
+  cursor: pointer;
+}
+
+.view-mode-toggle {
+  display: flex;
+  background: #f1f5f9;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 3px;
+}
+
+.view-btn {
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-btn.active {
+  background: #ffffff;
+  color: #0284c7;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Pallet Grid Cards */
+.cartons-grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 18px;
+}
+
+.pallet-card {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+}
+
+.pallet-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: #cbd5e1;
+}
+
+.pallet-warning {
+  border-left: 4px solid #d97706;
+}
+
+.pallet-danger {
+  border-left: 4px solid #ef4444;
+}
+
+.pallet-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.pallet-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #0284c7;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.status-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 9999px;
+}
+
+.status-pill.success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-pill.warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.status-pill.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.pallet-product-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.pallet-spec-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+.pallet-qty-box {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.pallet-qty-col {
+  flex: 1;
+  text-align: center;
+}
+
+.pallet-qty-number {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.pallet-qty-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.pallet-qty-divider {
+  width: 1px;
+  height: 36px;
+  background: var(--border-subtle);
+}
+
+.pallet-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-bottom: 16px;
+}
+
+.pallet-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pallet-card-actions {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 14px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+/* Packaging Calculation Box inside Modal */
+.pack-calc-box {
+  background: #f0fdf4;
+  border: 1.5px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 14px;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pack-calc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #166534;
+}
+
+.pack-calc-row.highlight {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #15803d;
+  border-top: 1px dashed #86efac;
+  border-bottom: 1px dashed #86efac;
+  padding: 6px 0;
+  margin: 4px 0;
+}
+
+/* Printable Carton Shipping Slip */
+.printable-carton-label {
+  background: #ffffff;
+  border: 2px solid #0f172a;
+  border-radius: 12px;
+  padding: 22px;
+  font-family: var(--font-sans);
+  color: #0f172a;
+}
+
+.carton-label-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.carton-label-brand {
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.carton-label-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  background: #0f172a;
+  color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+
+.carton-label-prod-name {
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.carton-label-size {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 14px;
+}
+
+.carton-label-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+}
+
+.carton-label-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.carton-label-caption {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.03em;
+}
+
+.carton-label-val {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.carton-label-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 12px;
+}
+
+.carton-barcode-mock {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  letter-spacing: 4px;
+  font-weight: 700;
+}
+
+.carton-qc-stamp {
+  border: 2px solid #059669;
+  color: #059669;
+  font-size: 0.75rem;
+  font-weight: 900;
+  padding: 3px 10px;
+  border-radius: 6px;
+  transform: rotate(-4deg);
+  letter-spacing: 0.06em;
+}
+
+

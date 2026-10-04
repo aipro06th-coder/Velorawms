@@ -36,6 +36,8 @@ import {
 
 import { getSupabase, testSupabaseConnection, signOutUser, getAuthSession, onAuthChange } from '../lib/supabase';
 import AuthScreen from '../components/AuthScreen';
+import FilledCartonsInventory from '../components/FilledCartonsInventory';
+
 
 
 // Predefined Categories & Default Size Presets
@@ -279,6 +281,127 @@ export default function WarehouseManagementApp() {
       localStorage.removeItem('velora_auth_user');
     }
     showToast('👋 Successfully logged out.');
+  };
+
+  // ----------------- Filled Cartons Handlers -----------------
+  const handlePackCartons = async (targetSize, cartonsToAdd, meta = {}) => {
+    try {
+      const newCartons = (targetSize.carton_quantity || 0) + cartonsToAdd;
+      const bpc = targetSize.bottles_per_carton || 24;
+      const packedBottles = cartonsToAdd * bpc;
+
+      setProductSizes(prev => prev.map(s => {
+        if (String(s.id) === String(targetSize.id)) {
+          return {
+            ...s,
+            carton_quantity: newCartons,
+            pallet_location: meta.palletLocation || s.pallet_location || 'Pallet Bay A-01'
+          };
+        }
+        return s;
+      }));
+
+      // Record transaction
+      const newTx = {
+        id: `TX-CTN-${Date.now()}`,
+        type: 'PACKING_IN',
+        item_type: 'FINISHED_CARTON',
+        product_name: targetSize.product_name,
+        size: targetSize.size || targetSize.size_name,
+        quantity: cartonsToAdd,
+        unit: 'cartons',
+        details: `Packed ${cartonsToAdd} master cartons (${packedBottles.toLocaleString()} bottles). Batch: ${meta.batchNo || 'N/A'}. Location: ${meta.palletLocation || 'Warehouse'}. ${meta.notes || ''}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      // Sync to Supabase if live
+      const client = getSupabase();
+      if (client && isSupabaseWorking) {
+        try {
+          await client.from('inventory').update({
+            cartons: newCartons,
+            updated_at: new Date().toISOString()
+          }).eq('product_size_id', targetSize.id);
+
+          await client.from('inventory_transactions').insert({
+            transaction_type: 'STOCK_IN',
+            product_size_id: targetSize.id,
+            cartons_changed: cartonsToAdd,
+            bottles_changed: packedBottles,
+            notes: `Packed ${cartonsToAdd} cartons. Batch: ${meta.batchNo || 'N/A'}`
+          });
+        } catch (dbErr) {
+          console.warn('Supabase carton sync note:', dbErr);
+        }
+      }
+
+      showToast(`📦 Successfully packed +${cartonsToAdd} Master Cartons of ${targetSize.product_name} (${targetSize.size || targetSize.size_name})!`);
+    } catch (err) {
+      console.error('Error packing cartons:', err);
+      showToast(`Error packing cartons: ${err.message}`);
+    }
+  };
+
+  const handleDispatchCartons = async (targetSize, cartonsToSub, meta = {}) => {
+    try {
+      const newCartons = Math.max(0, (targetSize.carton_quantity || 0) - cartonsToSub);
+      const bpc = targetSize.bottles_per_carton || 24;
+      const dispatchedBottles = cartonsToSub * bpc;
+
+      setProductSizes(prev => prev.map(s => {
+        if (String(s.id) === String(targetSize.id)) {
+          return {
+            ...s,
+            carton_quantity: newCartons
+          };
+        }
+        return s;
+      }));
+
+      // Record transaction
+      const newTx = {
+        id: `TX-DISP-${Date.now()}`,
+        type: 'DISPATCH_OUT',
+        item_type: 'FINISHED_CARTON',
+        product_name: targetSize.product_name,
+        size: targetSize.size || targetSize.size_name,
+        quantity: cartonsToSub,
+        unit: 'cartons',
+        details: `Dispatched ${cartonsToSub} cartons (${dispatchedBottles.toLocaleString()} bottles) to ${meta.customerName || 'Customer'}. Gate Pass: ${meta.gatePassNo || 'N/A'}. ${meta.notes || ''}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      // Sync to Supabase if live
+      const client = getSupabase();
+      if (client && isSupabaseWorking) {
+        try {
+          await client.from('inventory').update({
+            cartons: newCartons,
+            total_sold: ((targetSize.total_sold || 0) + dispatchedBottles),
+            updated_at: new Date().toISOString()
+          }).eq('product_size_id', targetSize.id);
+
+          await client.from('inventory_transactions').insert({
+            transaction_type: 'STOCK_OUT',
+            product_size_id: targetSize.id,
+            cartons_changed: -cartonsToSub,
+            bottles_changed: -dispatchedBottles,
+            notes: `Dispatched ${cartonsToSub} cartons to ${meta.customerName || 'Customer'}. Gate Pass: ${meta.gatePassNo || ''}`
+          });
+        } catch (dbErr) {
+          console.warn('Supabase carton dispatch sync note:', dbErr);
+        }
+      }
+
+      showToast(`🚚 Dispatched -${cartonsToSub} Master Cartons to ${meta.customerName || 'Customer'}! (Gate Pass: ${meta.gatePassNo})`);
+    } catch (err) {
+      console.error('Error dispatching cartons:', err);
+      showToast(`Error dispatching cartons: ${err.message}`);
+    }
   };
 
   // 1. Load from localStorage on client mount if available (and purge seeded factory data)
@@ -2918,6 +3041,17 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
           </div>
 
           <div
+            className={`nav-item ${activeTab === 'cartons' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('cartons'); setMobileMenuOpen(false); }}
+          >
+            <Boxes size={18} />
+            <span>Filled Cartons (بھرے کارٹن)</span>
+            {totalCartons > 0 && (
+              <span className="nav-badge info">{totalCartons.toLocaleString()} Ctns</span>
+            )}
+          </div>
+
+          <div
             className={`nav-item ${activeTab === 'stickers' ? 'active' : ''}`}
             onClick={() => { setActiveTab('stickers'); setMobileMenuOpen(false); }}
           >
@@ -3914,6 +4048,19 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                 </table>
               </div>
             </div>
+          )}
+
+          {/* ========================================================
+              VIEW: FILLED CARTONS INVENTORY (بھرے ہوئے کارٹن)
+             ======================================================== */}
+          {activeTab === 'cartons' && (
+            <FilledCartonsInventory
+              productSizes={productSizes}
+              products={products}
+              onPackCartons={handlePackCartons}
+              onDispatchCartons={handleDispatchCartons}
+              showToast={showToast}
+            />
           )}
 
           {/* ========================================================
