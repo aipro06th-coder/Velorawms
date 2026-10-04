@@ -40,6 +40,7 @@ import FilledCartonsInventory from '../components/FilledCartonsInventory';
 import BottlesInventory from '../components/BottlesInventory';
 import LabelsInventory from '../components/LabelsInventory';
 import RawMaterialsInventory from '../components/RawMaterialsInventory';
+import EmptyCartonsInventory, { DEFAULT_EMPTY_CARTONS } from '../components/EmptyCartonsInventory';
 
 
 
@@ -146,6 +147,7 @@ export default function WarehouseManagementApp() {
   const [productSizes, setProductSizes] = useState([]);
   const [stickers, setStickers] = useState([]);
   const [rawMaterials, setRawMaterials] = useState([]);
+  const [emptyCartons, setEmptyCartons] = useState(DEFAULT_EMPTY_CARTONS);
   const [suppliers, setSuppliers] = useState([]);
   const [transactions, setTransactions] = useState([]);
 
@@ -527,6 +529,178 @@ export default function WarehouseManagementApp() {
     }
   };
 
+  // ----------------- Empty Cartons Handlers -----------------
+  const handleStockInEmptyCarton = async (targetCarton, qty, meta = {}) => {
+    try {
+      const newQty = Number(targetCarton.quantity || 0) + qty;
+      setEmptyCartons(prev => prev.map(c => c.id === targetCarton.id ? { ...c, quantity: newQty } : c));
+
+      // Record transaction
+      const newTx = {
+        id: `TX-CTN-IN-${Date.now()}`,
+        type: 'STOCK_IN',
+        item_type: 'EMPTY_CARTON',
+        product_name: targetCarton.name,
+        size: targetCarton.size || `${targetCarton.bottle_capacity} btls`,
+        quantity: qty,
+        unit: 'cartons',
+        details: `Received +${qty} Empty Cartons from ${meta.supplier || targetCarton.supplier || 'Packaging Supplier'}. Invoice: ${meta.invoiceNo || 'N/A'}. Rate: Rs ${meta.purchasePrice || targetCarton.purchase_price}. ${meta.notes || ''}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      // Supabase sync if connected
+      const client = getSupabase();
+      if (client && isSupabaseWorking) {
+        try {
+          await client.from('inventory_transactions').insert({
+            id: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            transaction_type: 'Stock In',
+            item_type: 'Empty Carton',
+            item_name: targetCarton.name,
+            size_name: targetCarton.size || `${targetCarton.bottle_capacity} btls`,
+            quantity: qty,
+            unit: 'cartons',
+            reference_no: meta.invoiceNo || 'CTN-IN',
+            notes: `Received ${qty} empty boxes from ${meta.supplier || targetCarton.supplier || 'Supplier'}. Capacity: ${targetCarton.bottle_capacity} btls/ctn`,
+            performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Admin',
+            created_at: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.warn('Supabase empty carton sync note:', dbErr);
+        }
+      }
+
+      showToast(`📦 Received +${qty} Empty Cartons for "${targetCarton.name}"!`);
+    } catch (err) {
+      console.error('Error stocking in empty cartons:', err);
+      showToast(`Error: ${err.message}`);
+    }
+  };
+
+  const handleStockOutEmptyCarton = async (targetCarton, qty, meta = {}) => {
+    try {
+      const newQty = Math.max(0, Number(targetCarton.quantity || 0) - qty);
+      setEmptyCartons(prev => prev.map(c => c.id === targetCarton.id ? { ...c, quantity: newQty } : c));
+
+      // Record transaction
+      const newTx = {
+        id: `TX-CTN-OUT-${Date.now()}`,
+        type: 'STOCK_OUT',
+        item_type: 'EMPTY_CARTON',
+        product_name: targetCarton.name,
+        size: targetCarton.size || `${targetCarton.bottle_capacity} btls`,
+        quantity: qty,
+        unit: 'cartons',
+        details: `Issued -${qty} Empty Cartons to ${meta.packagingLine || 'Packaging Floor'}. Batch: ${meta.batchNo || 'N/A'}. ${meta.notes || ''}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      // Supabase sync if connected
+      const client = getSupabase();
+      if (client && isSupabaseWorking) {
+        try {
+          await client.from('inventory_transactions').insert({
+            id: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            transaction_type: 'Stock Out',
+            item_type: 'Empty Carton',
+            item_name: targetCarton.name,
+            size_name: targetCarton.size || `${targetCarton.bottle_capacity} btls`,
+            quantity: qty,
+            unit: 'cartons',
+            reference_no: meta.batchNo || 'PACK-LINE',
+            notes: `Issued ${qty} empty boxes to ${meta.packagingLine || 'Packaging Floor'}`,
+            performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Admin',
+            created_at: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.warn('Supabase empty carton issue sync note:', dbErr);
+        }
+      }
+
+      showToast(`🚚 Issued -${qty} Empty Cartons to ${meta.packagingLine || 'Packaging Line'}!`);
+    } catch (err) {
+      console.error('Error issuing empty cartons:', err);
+      showToast(`Error: ${err.message}`);
+    }
+  };
+
+  const handleAdjustEmptyCarton = async (targetCarton, newCount, reason) => {
+    try {
+      const oldCount = Number(targetCarton.quantity || 0);
+      const diff = newCount - oldCount;
+      setEmptyCartons(prev => prev.map(c => c.id === targetCarton.id ? { ...c, quantity: newCount } : c));
+
+      // Record transaction
+      const newTx = {
+        id: `TX-CTN-ADJ-${Date.now()}`,
+        type: 'STOCK_ADJUSTMENT',
+        item_type: 'EMPTY_CARTON',
+        product_name: targetCarton.name,
+        size: targetCarton.size || `${targetCarton.bottle_capacity} btls`,
+        quantity: newCount,
+        unit: 'cartons',
+        details: `Adjusted Stock: Was ${oldCount} -> Now ${newCount} boxes. Diff: ${diff >= 0 ? '+' : ''}${diff}. Reason: ${reason || 'Physical Audit'}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      showToast(`✅ "${targetCarton.name}" stock updated to ${newCount} cartons.`);
+    } catch (err) {
+      console.error('Carton adjust error:', err);
+      showToast(`Error: ${err.message}`);
+    }
+  };
+
+  const handleDamageEmptyCarton = async (targetCarton, dmgQty, reason) => {
+    try {
+      setEmptyCartons(prev => prev.map(c => {
+        if (c.id === targetCarton.id) {
+          return {
+            ...c,
+            quantity: Math.max(0, Number(c.quantity || 0) - dmgQty),
+            damaged_quantity: Number(c.damaged_quantity || 0) + dmgQty
+          };
+        }
+        return c;
+      }));
+
+      // Record transaction
+      const newTx = {
+        id: `TX-CTN-DMG-${Date.now()}`,
+        type: 'DAMAGE',
+        item_type: 'EMPTY_CARTON',
+        product_name: targetCarton.name,
+        size: targetCarton.size || `${targetCarton.bottle_capacity} btls`,
+        quantity: dmgQty,
+        unit: 'cartons',
+        details: `Logged ${dmgQty} Damaged / Waste Empty Cartons. Reason: ${reason || 'Crushed / Torn'}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      showToast(`⚠️ Logged ${dmgQty} damaged boxes for "${targetCarton.name}".`);
+    } catch (err) {
+      console.error('Carton damage error:', err);
+      showToast(`Error: ${err.message}`);
+    }
+  };
+
+  const handleAddNewEmptyCarton = (newCarton) => {
+    setEmptyCartons(prev => [newCarton, ...prev]);
+    showToast(`✨ Added new empty carton SKU: "${newCarton.name}"!`);
+  };
+
+  const handleDeleteEmptyCarton = (targetCarton) => {
+    setEmptyCartons(prev => prev.filter(c => c.id !== targetCarton.id));
+    showToast(`🗑️ Removed "${targetCarton.name}".`);
+  };
+
   // 1. Load from localStorage on client mount if available (and purge seeded factory data)
   useEffect(() => {
     try {
@@ -569,6 +743,16 @@ export default function WarehouseManagementApp() {
         setRawMaterials(parsed);
       }
 
+      const savedEmpty = localStorage.getItem('wms_emptyCartons');
+      if (savedEmpty) {
+        try {
+          const parsed = JSON.parse(savedEmpty);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setEmptyCartons(parsed);
+          }
+        } catch (e) { }
+      }
+
       const savedSups = localStorage.getItem('wms_suppliers');
       if (savedSups) setSuppliers(JSON.parse(savedSups));
 
@@ -589,12 +773,13 @@ export default function WarehouseManagementApp() {
       localStorage.setItem('wms_productSizes', JSON.stringify(productSizes));
       localStorage.setItem('wms_stickers', JSON.stringify(stickers));
       localStorage.setItem('wms_rawMaterials', JSON.stringify(rawMaterials));
+      localStorage.setItem('wms_emptyCartons', JSON.stringify(emptyCartons));
       localStorage.setItem('wms_suppliers', JSON.stringify(suppliers));
       localStorage.setItem('wms_transactions', JSON.stringify(transactions));
     } catch (e) {
       console.warn('localStorage save error:', e);
     }
-  }, [products, productSizes, stickers, rawMaterials, suppliers, transactions]);
+  }, [products, productSizes, stickers, rawMaterials, emptyCartons, suppliers, transactions]);
 
   // Test Supabase connection on mount and auto-fetch live tables
   useEffect(() => {
@@ -3197,6 +3382,19 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
           </div>
 
           <div
+            className={`nav-item ${activeTab === 'empty_cartons' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('empty_cartons'); setMobileMenuOpen(false); }}
+          >
+            <Layers size={18} />
+            <span>Empty Cartons</span>
+            {emptyCartons.reduce((acc, c) => acc + Number(c.quantity || 0), 0) > 0 && (
+              <span className="nav-badge emerald">
+                {emptyCartons.reduce((acc, c) => acc + Number(c.quantity || 0), 0).toLocaleString()} Pcs
+              </span>
+            )}
+          </div>
+
+          <div
             className={`nav-item ${activeTab === 'stickers' ? 'active' : ''}`}
             onClick={() => { setActiveTab('stickers'); setMobileMenuOpen(false); }}
           >
@@ -4146,6 +4344,23 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
               onDispatchCartons={handleDispatchCartons}
               onAdjustCartons={handleAdjustCartons}
               onOpenAddProduct={() => setModalType('ADD_PRODUCT')}
+              showToast={showToast}
+            />
+          )}
+
+          {/* ========================================================
+              VIEW: EMPTY CARTONS INVENTORY (خالی کارٹن اور باکسز)
+             ======================================================== */}
+          {activeTab === 'empty_cartons' && (
+            <EmptyCartonsInventory
+              emptyCartons={emptyCartons}
+              setEmptyCartons={setEmptyCartons}
+              onStockIn={handleStockInEmptyCarton}
+              onStockOut={handleStockOutEmptyCarton}
+              onAdjust={handleAdjustEmptyCarton}
+              onDamage={handleDamageEmptyCarton}
+              onAddNewCarton={handleAddNewEmptyCarton}
+              onDeleteCarton={handleDeleteEmptyCarton}
               showToast={showToast}
             />
           )}
