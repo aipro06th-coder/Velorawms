@@ -24,6 +24,16 @@ import {
   Check
 } from 'lucide-react';
 
+export const getBottlesPerCarton = (s) => {
+  if (!s) return 24;
+  const combined = `${s.product_name || ''} ${s.size || s.size_name || s.name || ''}`.toLowerCase();
+  const isSmallSweep = (combined.includes('sweep') || combined.includes('toilet')) &&
+                       (combined.includes('600') || combined.includes('small'));
+  const raw = Number(s.bottles_per_carton || s.bottlesPerCarton);
+  if (isSmallSweep) return (raw && raw !== 24) ? raw : 12;
+  return raw > 0 ? raw : 24;
+};
+
 export default function FilledCartonsInventory({
   productSizes = [],
   products = [],
@@ -68,7 +78,7 @@ export default function FilledCartonsInventory({
 
     productSizes.forEach((s) => {
       const ctns = Number(s.carton_quantity) || 0;
-      const bpc = Number(s.bottles_per_carton) || 24;
+      const bpc = getBottlesPerCarton(s);
       const price = Number(s.selling_price) || Number(s.purchase_price) || 0;
       const minStock = Number(s.minimum_stock) || 10;
 
@@ -230,7 +240,7 @@ export default function FilledCartonsInventory({
             }}
           >
             <Truck size={16} />
-            <span>Dispatch Cartons (ڈسپیچ کریں)</span>
+            <span>Dispatch Cartons </span>
           </button>
         </div>
       </div>
@@ -239,7 +249,7 @@ export default function FilledCartonsInventory({
       <div className="cartons-kpi-grid">
         <div className="carton-kpi-card" style={{ '--card-accent': '#0284c7' }}>
           <div className="carton-kpi-header">
-            <span className="carton-kpi-label">Total Filled Cartons (کل کارٹن)</span>
+            <span className="carton-kpi-label">Total Filled Cartons </span>
             <div className="carton-kpi-icon" style={{ background: '#e0f2fe', color: '#0284c7' }}>
               <Boxes size={18} />
             </div>
@@ -252,7 +262,7 @@ export default function FilledCartonsInventory({
 
         <div className="carton-kpi-card" style={{ '--card-accent': '#059669' }}>
           <div className="carton-kpi-header">
-            <span className="carton-kpi-label">Bottles Inside Cartons (بوتلیں)</span>
+            <span className="carton-kpi-label">Bottles Inside Cartons </span>
             <div className="carton-kpi-icon" style={{ background: '#d1fae5', color: '#059669' }}>
               <Package size={18} />
             </div>
@@ -265,7 +275,7 @@ export default function FilledCartonsInventory({
 
         <div className="carton-kpi-card" style={{ '--card-accent': '#7c3aed' }}>
           <div className="carton-kpi-header">
-            <span className="carton-kpi-label">Master Cartons Valuation (کل قیمت)</span>
+            <span className="carton-kpi-label">Master Cartons Valuation </span>
             <div className="carton-kpi-icon" style={{ background: '#ede9fe', color: '#7c3aed' }}>
               <TrendingUp size={18} />
             </div>
@@ -278,7 +288,7 @@ export default function FilledCartonsInventory({
 
         <div className="carton-kpi-card" style={{ '--card-accent': '#d97706' }}>
           <div className="carton-kpi-header">
-            <span className="carton-kpi-label">Low Stock Alerts (کم کارٹن)</span>
+            <span className="carton-kpi-label">Low Stock Alerts </span>
             <div className="carton-kpi-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
               <AlertTriangle size={18} />
             </div>
@@ -354,7 +364,7 @@ export default function FilledCartonsInventory({
               <tr>
                 <th>Product & Master Carton SKU</th>
                 <th>Packing Spec (Pack Ratio)</th>
-                <th>Filled Cartons in Stock (بھرے کارٹن)</th>
+                <th>Filled Cartons in Stock </th>
                 <th>Bottled Units Equivalent</th>
                 <th>Pallet / Rack Location</th>
                 <th>Selling Price / Carton</th>
@@ -374,7 +384,7 @@ export default function FilledCartonsInventory({
               ) : (
                 filteredCartons.map((s) => {
                   const ctns = Number(s.carton_quantity) || 0;
-                  const bpc = Number(s.bottles_per_carton) || 24;
+                  const bpc = getBottlesPerCarton(s);
                   const totalBtls = ctns * bpc;
                   const minStock = Number(s.minimum_stock) || 10;
                   const price = Number(s.selling_price) || Number(s.purchase_price) || 0;
@@ -523,7 +533,7 @@ export default function FilledCartonsInventory({
         <div className="cartons-grid-cards">
           {filteredCartons.map((s) => {
             const ctns = Number(s.carton_quantity) || 0;
-            const bpc = Number(s.bottles_per_carton) || 24;
+            const bpc = getBottlesPerCarton(s);
             const totalBtls = ctns * bpc;
             const price = Number(s.selling_price) || Number(s.purchase_price) || 0;
             const cartonPrice = price * bpc;
@@ -656,7 +666,7 @@ export default function FilledCartonsInventory({
                     <option value="">-- Choose Product Size --</option>
                     {productSizes.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.product_name} - {s.size || s.size_name} ({s.bottles_per_carton} btls/ctn) - Current: {s.carton_quantity || 0} ctns
+                        {s.product_name} - {s.size || s.size_name} ({getBottlesPerCarton(s)} btls/ctn) - Current: {s.carton_quantity || 0} ctns
                       </option>
                     ))}
                   </select>
@@ -692,7 +702,7 @@ export default function FilledCartonsInventory({
                   const sel = productSizes.find((s) => String(s.id) === String(packForm.sizeId));
                   if (!sel) return null;
                   const ctns = parseInt(packForm.cartonsToPack, 10) || 0;
-                  const bpc = sel.bottles_per_carton || 24;
+                  const bpc = getBottlesPerCarton(sel);
                   const totalBtls = ctns * bpc;
                   return (
                     <div className="pack-calc-box">
@@ -818,6 +828,31 @@ export default function FilledCartonsInventory({
                   </div>
                 </div>
 
+                {/* Live Dispatch Calculation */}
+                {(() => {
+                  const sel = productSizes.find((s) => String(s.id) === String(dispatchForm.sizeId));
+                  if (!sel) return null;
+                  const ctns = parseInt(dispatchForm.cartonsToDispatch, 10) || 0;
+                  const bpc = getBottlesPerCarton(sel);
+                  const totalBtls = ctns * bpc;
+                  return (
+                    <div className="pack-calc-box" style={{ background: '#fef2f2', borderColor: '#fecaca', marginBottom: '14px' }}>
+                      <div className="pack-calc-row">
+                        <span>Carton Ratio:</span>
+                        <strong>{bpc} Bottles per 1 Carton</strong>
+                      </div>
+                      <div className="pack-calc-row highlight" style={{ color: '#dc2626' }}>
+                        <span>Total Bottles to Dispatch:</span>
+                        <strong>{totalBtls.toLocaleString()} Bottles</strong>
+                      </div>
+                      <div className="pack-calc-row">
+                        <span>Remaining Stock after Dispatch:</span>
+                        <span>{Math.max(0, (sel.carton_quantity || 0) - ctns).toLocaleString()} Master Cartons</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="form-group">
                   <label className="form-label">Customer / Wholesaler Name</label>
                   <input
@@ -884,11 +919,13 @@ export default function FilledCartonsInventory({
                 <div className="carton-label-grid">
                   <div className="carton-label-col">
                     <span className="carton-label-caption">PACK QUANTITY:</span>
-                    <strong className="carton-label-val">{selectedSize.bottles_per_carton} BOTTLES</strong>
+                    <strong className="carton-label-val">{getBottlesPerCarton(selectedSize)} BOTTLES</strong>
                   </div>
                   <div className="carton-label-col">
                     <span className="carton-label-caption">NET WEIGHT/VOL:</span>
-                    <strong className="carton-label-val">APPROX. 14.5 KG</strong>
+                    <strong className="carton-label-val">
+                      APPROX. {(getBottlesPerCarton(selectedSize) * (String(selectedSize.size || '').includes('1.2') ? 1.25 : 0.65)).toFixed(1)} KG
+                    </strong>
                   </div>
                 </div>
 

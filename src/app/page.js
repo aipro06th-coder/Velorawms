@@ -45,7 +45,7 @@ export const PRODUCT_CATEGORIES = [
   {
     label: 'Sweep / Toilet Cleaner (600ml & 1.2 Liter)',
     sizes: [
-      { name: 'Sweep 600ml Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' },
+      { name: 'Sweep 600ml Bottle', bottlesPerCarton: 12, purchasePrice: '', sellingPrice: '', minStock: '' },
       { name: 'Toilet 1.2 Liter Bottle', bottlesPerCarton: '', purchasePrice: '', sellingPrice: '', minStock: '' }
     ]
   },
@@ -80,6 +80,22 @@ export const PRODUCT_CATEGORIES = [
     ]
   }
 ];
+
+// Helper to determine bottles per carton (Small Sweep / Sweep 600ml defaults to 12)
+export const getBottlesPerCarton = (sizeObj, productName = '') => {
+  if (!sizeObj) return 24;
+  const pName = (sizeObj.product_name || productName || '').toLowerCase();
+  const sName = (sizeObj.size || sizeObj.size_name || sizeObj.name || '').toLowerCase();
+  const combined = `${pName} ${sName}`;
+  const isSmallSweep = (combined.includes('sweep') || combined.includes('toilet')) &&
+                       (combined.includes('600') || combined.includes('small'));
+
+  const rawVal = Number(sizeObj.bottles_per_carton || sizeObj.bottlesPerCarton);
+  if (isSmallSweep) {
+    return (rawVal && rawVal !== 24) ? rawVal : 12;
+  }
+  return rawVal > 0 ? rawVal : 24;
+};
 
 export default function WarehouseManagementApp() {
   // Authentication state
@@ -287,7 +303,7 @@ export default function WarehouseManagementApp() {
   const handlePackCartons = async (targetSize, cartonsToAdd, meta = {}) => {
     try {
       const newCartons = (targetSize.carton_quantity || 0) + cartonsToAdd;
-      const bpc = targetSize.bottles_per_carton || 24;
+      const bpc = getBottlesPerCarton(targetSize);
       const packedBottles = cartonsToAdd * bpc;
 
       setProductSizes(prev => prev.map(s => {
@@ -347,7 +363,7 @@ export default function WarehouseManagementApp() {
   const handleDispatchCartons = async (targetSize, cartonsToSub, meta = {}) => {
     try {
       const newCartons = Math.max(0, (targetSize.carton_quantity || 0) - cartonsToSub);
-      const bpc = targetSize.bottles_per_carton || 24;
+      const bpc = getBottlesPerCarton(targetSize);
       const dispatchedBottles = cartonsToSub * bpc;
 
       setProductSizes(prev => prev.map(s => {
@@ -423,7 +439,15 @@ export default function WarehouseManagementApp() {
 
       const savedSizes = localStorage.getItem('wms_productSizes');
       if (savedSizes) {
-        const parsed = JSON.parse(savedSizes).filter(s => !isSeededId(s.id) && !isSeededId(s.product_id));
+        const parsed = JSON.parse(savedSizes)
+          .filter(s => !isSeededId(s.id) && !isSeededId(s.product_id))
+          .map(s => {
+            const combined = `${s.product_name || ''} ${s.size || s.size_name || ''}`.toLowerCase();
+            if ((combined.includes('sweep') || combined.includes('toilet')) && (combined.includes('600') || combined.includes('small'))) {
+              return { ...s, bottles_per_carton: 12 };
+            }
+            return s;
+          });
         setProductSizes(parsed);
       }
 
@@ -751,7 +775,7 @@ export default function WarehouseManagementApp() {
     const curStk = stickers.find(s => String(s.id) === String(defaultStickerId)) || stickers[0] || null;
     const selectedProd = products.find(p => String(p.id) === String(curSize?.product_id)) || products[0] || null;
 
-    const bpc = curSize?.bottles_per_carton || 24;
+    const bpc = getBottlesPerCarton(curSize);
     const defaultCartons = 10;
 
     setStockForm({
@@ -793,7 +817,7 @@ export default function WarehouseManagementApp() {
       status: 'Available',
       sizes: preset ? preset.sizes.map(s => ({
         ...s,
-        bottlesPerCarton: '',
+        bottlesPerCarton: (s.bottlesPerCarton !== undefined && s.bottlesPerCarton !== '') ? s.bottlesPerCarton : '',
         purchasePrice: '',
         sellingPrice: '',
         minStock: ''
@@ -879,7 +903,7 @@ export default function WarehouseManagementApp() {
         };
 
         setTransactions(prev => [newTx, ...prev]);
-        showToast(`🏷️ Stickers Stock In: +${addStickers.toLocaleString()} ${targetSticker.unit || 'pcs'} added to ${targetSticker.name}! Total: ${newStickers.toLocaleString()}`);
+        showToast(` Stickers Stock In: +${addStickers.toLocaleString()} ${targetSticker.unit || 'pcs'} added to ${targetSticker.name}! Total: ${newStickers.toLocaleString()}`);
         setModalType(null);
 
         try {
@@ -960,7 +984,7 @@ export default function WarehouseManagementApp() {
       };
 
       setTransactions(prev => [newTx, ...prev]);
-      showToast(`🏷️ Stickers Stock In: +${addStickers.toLocaleString()} pcs added to ${targetSize.product_name} (${targetSize.size})! Total: ${newStickers.toLocaleString()} pcs`);
+      showToast(` Stickers Stock In: +${addStickers.toLocaleString()} pcs added to ${targetSize.product_name} (${targetSize.size})! Total: ${newStickers.toLocaleString()} pcs`);
       setModalType(null);
 
       try {
@@ -2109,7 +2133,11 @@ export default function WarehouseManagementApp() {
       ];
 
     let createdSizes = sizesToUse.map((s, idx) => {
-      const bpc = parseInt(s.bottlesPerCarton, 10) || 24;
+      const isSmallSweep = ((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('sweep') &&
+        (((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('600') ||
+         ((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('small'));
+      const defaultBpc = isSmallSweep ? 12 : 24;
+      const bpc = parseInt(s.bottlesPerCarton, 10) || defaultBpc;
       const pp = parseFloat(s.purchasePrice) || 0;
       const sp = parseFloat(s.sellingPrice) || 0;
       const minStock = parseInt(s.minStock, 10) || 0;
@@ -2155,7 +2183,11 @@ export default function WarehouseManagementApp() {
         // 2. Insert sizes & inventory
         for (let idx = 0; idx < sizesToUse.length; idx++) {
           const s = sizesToUse[idx];
-          const bpc = parseInt(s.bottlesPerCarton, 10) || 24;
+          const isSmallSweep = ((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('sweep') &&
+            (((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('600') ||
+             ((s.name || '') + ' ' + (newProductForm.name || '')).toLowerCase().includes('small'));
+          const defaultBpc = isSmallSweep ? 12 : 24;
+          const bpc = parseInt(s.bottlesPerCarton, 10) || defaultBpc;
           const pp = parseFloat(s.purchasePrice) || 0;
           const sp = parseFloat(s.sellingPrice) || 0;
           const minStock = parseInt(s.minStock, 10) || 0;
@@ -2394,7 +2426,7 @@ export default function WarehouseManagementApp() {
       productId: sizeObj.product_id,
       productName: sizeObj.product_name,
       sizeName: sizeObj.size,
-      bottlesPerCarton: sizeObj.bottles_per_carton,
+      bottlesPerCarton: sizeObj.bottles_per_carton || getBottlesPerCarton(sizeObj),
       purchasePrice: sizeObj.purchase_price,
       sellingPrice: sizeObj.selling_price,
       minStock: sizeObj.minimum_stock,
@@ -2409,12 +2441,16 @@ export default function WarehouseManagementApp() {
     e.preventDefault();
     if (!editSizeForm.id) return;
 
-    const bpc = parseInt(editSizeForm.bottlesPerCarton, 10) || 24;
+    const updatedProdName = editSizeForm.productName.trim() || 'Product';
+    const updatedSizeName = editSizeForm.sizeName.trim() || 'Standard';
+    const isSmallSweep = ((updatedProdName || '') + ' ' + (updatedSizeName || '')).toLowerCase().includes('sweep') &&
+      (((updatedProdName || '') + ' ' + (updatedSizeName || '')).toLowerCase().includes('600') ||
+       ((updatedProdName || '') + ' ' + (updatedSizeName || '')).toLowerCase().includes('small'));
+    const defaultBpc = isSmallSweep ? 12 : 24;
+    const bpc = parseInt(editSizeForm.bottlesPerCarton, 10) || defaultBpc;
     const pp = parseFloat(editSizeForm.purchasePrice) || 0;
     const sp = parseFloat(editSizeForm.sellingPrice) || 0;
     const minStock = parseInt(editSizeForm.minStock, 10) || 0;
-    const updatedProdName = editSizeForm.productName.trim() || 'Product';
-    const updatedSizeName = editSizeForm.sizeName.trim() || 'Standard';
     const btls = parseInt(editSizeForm.bottleQuantity || 0, 10);
     const ctns = editSizeForm.cartonQuantity !== '' && editSizeForm.cartonQuantity !== undefined
       ? parseInt(editSizeForm.cartonQuantity, 10)
@@ -2700,12 +2736,18 @@ export default function WarehouseManagementApp() {
         setProductSizes(sizesData.map(s => {
           const inv = invData?.find(i => i.product_size_id === s.id) || {};
           const prod = prodData?.find(p => p.id === s.product_id);
+          const isSmallSweep = ((prod ? prod.name : '') + ' ' + (s.size_name || '')).toLowerCase().includes('sweep') &&
+            (((prod ? prod.name : '') + ' ' + (s.size_name || '')).toLowerCase().includes('600') ||
+             ((prod ? prod.name : '') + ' ' + (s.size_name || '')).toLowerCase().includes('small'));
+          const bpc = isSmallSweep
+            ? ((s.bottles_per_carton && Number(s.bottles_per_carton) !== 24) ? Number(s.bottles_per_carton) : 12)
+            : (s.bottles_per_carton || 24);
           return {
             id: String(s.id),
             product_id: s.product_id,
             product_name: prod ? prod.name : 'Product',
             size: s.size_name,
-            bottles_per_carton: s.bottles_per_carton || 24,
+            bottles_per_carton: bpc,
             purchase_price: parseFloat(s.purchase_price || 0),
             selling_price: parseFloat(s.selling_price || 0),
             minimum_stock: s.minimum_stock || 50,
@@ -3566,7 +3608,8 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                           const potentialSales = s.bottle_quantity * s.selling_price;
                           const isLow = s.bottle_quantity > 0 && s.bottle_quantity <= s.minimum_stock;
                           const isOut = s.bottle_quantity <= 0;
-                          const cartonBottles = s.carton_quantity * s.bottles_per_carton;
+                          const bpc = getBottlesPerCarton(s);
+                          const cartonBottles = s.carton_quantity * bpc;
 
                           return (
                             <tr key={s.id}>
@@ -3596,7 +3639,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                                   📦 {s.carton_quantity.toLocaleString()} Cartons
                                 </span>
                                 <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', marginTop: '3px' }}>
-                                  ({cartonBottles.toLocaleString()} btls @ {s.bottles_per_carton}/ctn)
+                                  ({cartonBottles.toLocaleString()} btls @ {bpc}/ctn)
                                 </span>
                               </td>
                               <td>
@@ -4013,7 +4056,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                             <td><span className={`size-tag ${s.size.toLowerCase()}`}>{s.size}</span></td>
                             <td><strong style={{ color: isOut ? '#e11d48' : '#0f172a' }}>{s.bottle_quantity}</strong></td>
                             <td style={{ color: '#64748b' }}>{s.issued_bottles || 0}</td>
-                            <td><strong>{s.carton_quantity}</strong> ({s.carton_quantity * s.bottles_per_carton} btls)</td>
+                            <td><strong>{s.carton_quantity}</strong> ({s.carton_quantity * getBottlesPerCarton(s)} btls)</td>
                             <td style={{ color: '#e11d48' }}>{s.damaged_bottles || 0}</td>
                             <td>Rs. {s.purchase_price}</td>
                             <td style={{ color: '#059669', fontWeight: 600 }}>Rs. {s.selling_price}</td>
@@ -5237,7 +5280,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                     {(() => {
                       const curSize = productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id)) || productSizes[0];
                       if (!curSize) return null;
-                      const bpc = curSize.bottles_per_carton || 24;
+                      const bpc = getBottlesPerCarton(curSize);
                       const incomingBottles = parseInt(stockForm.bottleQty || 0, 10);
                       const incomingCartons = parseInt(stockForm.cartonQty || 0, 10);
                       const expectedBottles = (curSize.bottle_quantity || 0) + (isNaN(incomingBottles) ? 0 : incomingBottles);
@@ -5346,7 +5389,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                           value={stockForm.sizeId || (productSizes[0]?.id || '')}
                           onChange={(e) => {
                             const chosen = productSizes.find(s => String(s.id) === String(e.target.value));
-                            const bpc = chosen?.bottles_per_carton || 24;
+                            const bpc = getBottlesPerCarton(chosen);
                             const curCtns = parseInt(stockForm.cartonQty || 10, 10);
                             setStockForm({
                               ...stockForm,
@@ -5410,7 +5453,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                               onChange={(e) => {
                                 const ctns = parseInt(e.target.value || 0, 10);
                                 const activeSize = productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id));
-                                const bpc = activeSize?.bottles_per_carton || 24;
+                                const bpc = getBottlesPerCarton(activeSize);
                                 setStockForm({
                                   ...stockForm,
                                   cartonQty: e.target.value,
@@ -5420,7 +5463,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                               }}
                             />
                             <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                              = {parseInt(stockForm.cartonQty || 0, 10) * (productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id))?.bottles_per_carton || 24)} Total Bottles filled & packed
+                              = {parseInt(stockForm.cartonQty || 0, 10) * getBottlesPerCarton(productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id)))} Total Bottles filled & packed
                             </span>
                           </div>
 
@@ -5435,7 +5478,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                               onChange={(e) => {
                                 const btls = parseInt(e.target.value || 0, 10);
                                 const activeSize = productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id));
-                                const bpc = activeSize?.bottles_per_carton || 24;
+                                const bpc = getBottlesPerCarton(activeSize);
                                 setStockForm({
                                   ...stockForm,
                                   bottleQty: e.target.value,
@@ -5463,7 +5506,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                               onChange={(e) => {
                                 const btls = parseInt(e.target.value || 0, 10);
                                 const activeSize = productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id));
-                                const bpc = activeSize?.bottles_per_carton || 24;
+                                const bpc = getBottlesPerCarton(activeSize);
                                 setStockForm({
                                   ...stockForm,
                                   bottleQty: e.target.value,
@@ -5473,7 +5516,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                               }}
                             />
                             <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                              Packaged into {Math.floor(parseInt(stockForm.bottleQty || 0, 10) / (productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id))?.bottles_per_carton || 24))} Full Cartons
+                              Packaged into {Math.floor(parseInt(stockForm.bottleQty || 0, 10) / getBottlesPerCarton(productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id))))} Full Cartons
                             </span>
                           </div>
 
@@ -6640,7 +6683,11 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                       onChange={(e) => {
                         const val = e.target.value;
                         const btls = parseInt(val || 0, 10);
-                        const bpc = parseInt(editSizeForm.bottlesPerCarton, 10) || 24;
+                        const bpc = getBottlesPerCarton({
+                          bottles_per_carton: editSizeForm.bottlesPerCarton,
+                          product_name: editSizeForm.productName,
+                          size: editSizeForm.sizeName
+                        });
                         setEditSizeForm({
                           ...editSizeForm,
                           bottleQuantity: val,
@@ -6663,7 +6710,11 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                       onChange={(e) => {
                         const val = e.target.value;
                         const ctns = parseInt(val || 0, 10);
-                        const bpc = parseInt(editSizeForm.bottlesPerCarton, 10) || 24;
+                        const bpc = getBottlesPerCarton({
+                          bottles_per_carton: editSizeForm.bottlesPerCarton,
+                          product_name: editSizeForm.productName,
+                          size: editSizeForm.sizeName
+                        });
                         setEditSizeForm({
                           ...editSizeForm,
                           cartonQuantity: val,
