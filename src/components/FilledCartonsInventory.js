@@ -28,7 +28,7 @@ export const getBottlesPerCarton = (s) => {
   if (!s) return 24;
   const combined = `${s.product_name || ''} ${s.size || s.size_name || s.name || ''}`.toLowerCase();
   const isSmallSweep = (combined.includes('sweep') || combined.includes('toilet')) &&
-                       (combined.includes('600') || combined.includes('small'));
+    (combined.includes('600') || combined.includes('small'));
   const raw = Number(s.bottles_per_carton || s.bottlesPerCarton);
   if (isSmallSweep) return (raw && raw !== 24) ? raw : 12;
   return raw > 0 ? raw : 24;
@@ -67,6 +67,12 @@ export default function FilledCartonsInventory({
     customerName: '',
     gatePassNo: `GP-${Math.floor(1000 + Math.random() * 9000)}`,
     notes: ''
+  });
+
+  const [adjustForm, setAdjustForm] = useState({
+    sizeId: '',
+    cartonQuantity: 0,
+    reason: 'Opening physical stock count'
   });
 
   // Calculate high-level summary KPIs
@@ -187,6 +193,28 @@ export default function FilledCartonsInventory({
     setActiveModal(null);
   };
 
+  // Handle Manual Set / Opening Stock Submit
+  const handleAdjustSubmit = (e) => {
+    e.preventDefault();
+    const size = productSizes.find((s) => String(s.id) === String(adjustForm.sizeId));
+    if (!size) {
+      if (showToast) showToast('Please select a valid product size.');
+      return;
+    }
+
+    const ctns = parseInt(adjustForm.cartonQuantity, 10);
+    if (isNaN(ctns) || ctns < 0) {
+      if (showToast) showToast('Please enter a valid carton quantity (0 or more).');
+      return;
+    }
+
+    if (onAdjustCartons) {
+      onAdjustCartons(size, ctns, adjustForm.reason);
+    }
+
+    setActiveModal(null);
+  };
+
   return (
     <div className="filled-cartons-section">
       {/* Header Banner */}
@@ -207,6 +235,23 @@ export default function FilledCartonsInventory({
 
         <div className="cartons-header-actions">
           <button
+            className="btn btn-primary btn-sm"
+            onClick={() => {
+              const defaultSize = productSizes[0];
+              setAdjustForm({
+                sizeId: defaultSize ? String(defaultSize.id) : '',
+                cartonQuantity: defaultSize ? (defaultSize.carton_quantity || 0) : 0,
+                reason: 'Opening physical stock count'
+              });
+              setActiveModal('ADJUST');
+            }}
+            title="Set exact physical count of master cartons"
+          >
+            <SlidersHorizontal size={16} />
+            <span>Set Opening Stock (موجودہ کارٹن درج کریں)</span>
+          </button>
+
+          <button
             className="btn btn-emerald btn-sm"
             onClick={() => {
               const defaultSize = productSizes[0];
@@ -222,7 +267,7 @@ export default function FilledCartonsInventory({
             }}
           >
             <Plus size={16} />
-            <span>Pack New Cartons (کارٹن پیک کریں)</span>
+            <span>Pack New Cartons </span>
           </button>
 
           <button
@@ -411,7 +456,7 @@ export default function FilledCartonsInventory({
                               fontSize: '0.8rem'
                             }}
                           >
-                            📦
+
                           </div>
                           <div>
                             <div style={{ fontWeight: 700, color: '#0f172a' }}>{s.product_name}</div>
@@ -470,6 +515,22 @@ export default function FilledCartonsInventory({
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                          <button
+                            className="btn btn-secondary btn-xs"
+                            onClick={() => {
+                              setAdjustForm({
+                                sizeId: String(s.id),
+                                cartonQuantity: s.carton_quantity || 0,
+                                reason: 'Physical stock verification'
+                              });
+                              setActiveModal('ADJUST');
+                            }}
+                            title="Manually set physical carton count"
+                          >
+                            <SlidersHorizontal size={13} />
+                            <span>Set Stock</span>
+                          </button>
+
                           <button
                             className="btn btn-secondary btn-xs"
                             onClick={() => {
@@ -586,6 +647,22 @@ export default function FilledCartonsInventory({
                 </div>
 
                 <div className="pallet-card-actions">
+                  <button
+                    className="btn btn-secondary btn-sm flex-1"
+                    onClick={() => {
+                      setAdjustForm({
+                        sizeId: String(s.id),
+                        cartonQuantity: s.carton_quantity || 0,
+                        reason: 'Physical stock audit / adjustment'
+                      });
+                      setActiveModal('ADJUST');
+                    }}
+                    title="Manually set physical cartons"
+                  >
+                    <SlidersHorizontal size={13} />
+                    <span>Set Stock</span>
+                  </button>
+
                   <button
                     className="btn btn-secondary btn-sm flex-1"
                     onClick={() => {
@@ -891,7 +968,121 @@ export default function FilledCartonsInventory({
         </div>
       )}
 
-      {/* ===================== MODAL 3: PRINT MASTER CARTON LABEL ===================== */}
+      {/* ===================== MODAL 3: MANUAL CARTON STOCK / ADJUSTMENT ===================== */}
+      {activeModal === 'ADJUST' && (
+        <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <SlidersHorizontal size={20} style={{ color: '#0284c7' }} />
+                <h3>Set / Adjust Existing Filled Cartons (موجودہ کارٹن درج کریں)</h3>
+              </div>
+              <button className="modal-close-btn" onClick={() => setActiveModal(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAdjustSubmit}>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Select Packed Product</label>
+                  <select
+                    className="form-input"
+                    value={adjustForm.sizeId}
+                    onChange={(e) => {
+                      const sel = productSizes.find(s => String(s.id) === String(e.target.value));
+                      setAdjustForm({
+                        ...adjustForm,
+                        sizeId: e.target.value,
+                        cartonQuantity: sel ? (sel.carton_quantity || 0) : 0
+                      });
+                    }}
+                    required
+                  >
+                    <option value="">-- Choose Product Size --</option>
+                    {productSizes.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.product_name} - {s.size || s.size_name} ({getBottlesPerCarton(s)} btls/ctn) — Currently: {s.carton_quantity || 0} ctns
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ color: '#0284c7', fontWeight: 800 }}>
+                    Exact Physical Cartons In Warehouse (موجودہ کل کارٹن)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    className="form-input"
+                    style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0284c7', borderColor: '#bae6fd', background: '#f0f9ff' }}
+                    value={adjustForm.cartonQuantity}
+                    onChange={(e) => setAdjustForm({ ...adjustForm, cartonQuantity: e.target.value })}
+                  />
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                    Warehouse me jitne bhare hue master cartons physical maujood hain wo tadad yahan likhen.
+                  </span>
+                </div>
+
+                {/* Live Preview */}
+                {(() => {
+                  const sel = productSizes.find((s) => String(s.id) === String(adjustForm.sizeId));
+                  if (!sel) return null;
+                  const newCtns = parseInt(adjustForm.cartonQuantity, 10) || 0;
+                  const bpc = getBottlesPerCarton(sel);
+                  const newBottles = newCtns * bpc;
+                  const oldCtns = sel.carton_quantity || 0;
+                  const diff = newCtns - oldCtns;
+
+                  return (
+                    <div className="pack-calc-box" style={{ background: '#f8fafc', borderColor: '#cbd5e1', marginBottom: '14px' }}>
+                      <div className="pack-calc-row">
+                        <span>Carton Packaging Ratio:</span>
+                        <strong>{bpc} Bottles per 1 Carton</strong>
+                      </div>
+                      <div className="pack-calc-row highlight" style={{ color: '#0284c7' }}>
+                        <span>Total Bottles in Warehouse:</span>
+                        <strong>{newBottles.toLocaleString()} Bottles</strong>
+                      </div>
+                      <div className="pack-calc-row">
+                        <span>Stock Change / Difference:</span>
+                        <strong style={{ color: diff >= 0 ? '#059669' : '#dc2626' }}>
+                          {diff >= 0 ? `+${diff}` : diff} Cartons ({diff >= 0 ? `+${diff * bpc}` : diff * bpc} Bottles)
+                        </strong>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="form-group">
+                  <label className="form-label">Reason / Verification Note</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Opening Stock / Physical Warehouse Count / Audit"
+                    value={adjustForm.reason}
+                    onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setActiveModal(null)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  <Check size={16} />
+                  <span>Update & Set Carton Stock (سٹاک محفوظ کریں)</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== MODAL 4: PRINT MASTER CARTON LABEL ===================== */}
       {activeModal === 'PRINT_LABEL' && selectedSize && (
         <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>

@@ -420,6 +420,64 @@ export default function WarehouseManagementApp() {
     }
   };
 
+  const handleAdjustCartons = async (targetSize, newCartonCount, reason = 'Opening physical stock count') => {
+    try {
+      const bpc = getBottlesPerCarton(targetSize);
+      const oldCartons = targetSize.carton_quantity || 0;
+      const count = Math.max(0, parseInt(newCartonCount, 10) || 0);
+      const diff = count - oldCartons;
+      const newBottles = count * bpc;
+
+      setProductSizes(prev => prev.map(s => {
+        if (String(s.id) === String(targetSize.id)) {
+          return {
+            ...s,
+            carton_quantity: count,
+            bottle_quantity: newBottles
+          };
+        }
+        return s;
+      }));
+
+      // Record transaction in history
+      const newTx = {
+        id: `TX-ADJ-CTN-${Date.now()}`,
+        type: 'STOCK_ADJUSTMENT',
+        item_type: 'FINISHED_CARTON',
+        product_name: targetSize.product_name,
+        size: targetSize.size || targetSize.size_name,
+        quantity: count,
+        unit: 'cartons',
+        details: `Manual Carton Stock Set: Previous ${oldCartons} ctns -> New ${count} ctns (${newBottles.toLocaleString()} btls @ ${bpc}/ctn). Diff: ${diff >= 0 ? '+' : ''}${diff}. Reason: ${reason}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      // Sync to Supabase if live
+      const client = getSupabase();
+      if (client && isSupabaseWorking) {
+        try {
+          const numId = parseInt(targetSize.id, 10);
+          if (!isNaN(numId)) {
+            await client.from('inventory').update({
+              cartons: count,
+              available_bottles: newBottles,
+              updated_at: new Date().toISOString()
+            }).eq('product_size_id', numId);
+          }
+        } catch (dbErr) {
+          console.warn('Supabase carton adjust sync note:', dbErr);
+        }
+      }
+
+      showToast(`✅ "${targetSize.product_name} - ${targetSize.size}" stock manually set to ${count} cartons (${newBottles.toLocaleString()} bottles)!`);
+    } catch (err) {
+      console.error('Carton adjust error:', err);
+      showToast(`Error adjusting cartons: ${err.message}`);
+    }
+  };
+
   // 1. Load from localStorage on client mount if available (and purge seeded factory data)
   useEffect(() => {
     try {
@@ -4102,6 +4160,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
               products={products}
               onPackCartons={handlePackCartons}
               onDispatchCartons={handleDispatchCartons}
+              onAdjustCartons={handleAdjustCartons}
               showToast={showToast}
             />
           )}
