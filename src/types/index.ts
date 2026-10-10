@@ -92,6 +92,25 @@ export interface EmptyCarton {
 }
 
 // ==========================================
+// Empty Bottles Types (خالی بوتلیں)
+// ==========================================
+export interface EmptyBottle {
+  id: string;
+  name: string;
+  category: string;
+  size: string;
+  material: string;
+  cap_type: string;
+  quantity: number;
+  damaged_quantity: number;
+  minimum_stock: number;
+  purchase_price: number;
+  supplier: string;
+  status: string;
+  [key: string]: any;
+}
+
+// ==========================================
 // Raw Materials Types
 // ==========================================
 export interface RawMaterial {
@@ -231,6 +250,18 @@ export interface EmptyCartonsInventoryProps {
   onDamage?: (carton: EmptyCarton, dmgQty: number, reason?: string) => void;
   onAddNewCarton?: (carton: EmptyCarton) => void;
   onDeleteCarton?: (carton: EmptyCarton) => void;
+  showToast?: (msg: string) => void;
+}
+
+export interface EmptyBottlesInventoryProps {
+  emptyBottles?: EmptyBottle[];
+  setEmptyBottles?: React.Dispatch<React.SetStateAction<EmptyBottle[]>>;
+  onStockIn?: (bottle: EmptyBottle, qty: number, meta?: any) => void;
+  onStockOut?: (bottle: EmptyBottle, qty: number, meta?: any) => void;
+  onAdjust?: (bottle: EmptyBottle, newQty: number, reason?: string) => void;
+  onDamage?: (bottle: EmptyBottle, dmgQty: number, reason?: string) => void;
+  onAddNewBottle?: (bottle: EmptyBottle) => void;
+  onDeleteBottle?: (bottle: EmptyBottle) => void;
   showToast?: (msg: string) => void;
 }
 

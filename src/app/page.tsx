@@ -41,6 +41,7 @@ import BottlesInventory from '../components/BottlesInventory';
 import LabelsInventory from '../components/LabelsInventory';
 import RawMaterialsInventory from '../components/RawMaterialsInventory';
 import EmptyCartonsInventory, { DEFAULT_EMPTY_CARTONS } from '../components/EmptyCartonsInventory';
+import EmptyBottlesInventory, { DEFAULT_EMPTY_BOTTLES } from '../components/EmptyBottlesInventory';
 import GatePassManager from '../components/GatePassManager';
 
 
@@ -149,6 +150,7 @@ export default function WarehouseManagementApp() {
   const [stickers, setStickers] = useState<any[]>([]);
   const [rawMaterials, setRawMaterials] = useState<any[]>([]);
   const [emptyCartons, setEmptyCartons] = useState<any[]>(DEFAULT_EMPTY_CARTONS);
+  const [emptyBottles, setEmptyBottles] = useState<any[]>(DEFAULT_EMPTY_BOTTLES);
   const [gatePasses, setGatePasses] = useState<any[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -703,6 +705,172 @@ export default function WarehouseManagementApp() {
     showToast(`🗑️ Removed "${targetCarton.name}".`);
   };
 
+  // ----------------- Empty Bottles Handlers -----------------
+  const handleStockInEmptyBottle = async (targetBottle: any, qty: any, meta: any = {}) => {
+    try {
+      const newQty = Number(targetBottle.quantity || 0) + qty;
+      setEmptyBottles(prev => prev.map(b => b.id === targetBottle.id ? { ...b, quantity: newQty } : b));
+
+      const newTx = {
+        id: `TX-BTL-IN-${Date.now()}`,
+        type: 'STOCK_IN',
+        item_type: 'EMPTY_BOTTLE',
+        product_name: targetBottle.name,
+        size: targetBottle.size || 'Bottle',
+        quantity: qty,
+        unit: 'bottles',
+        details: `Received +${qty} Empty Bottles from ${meta.supplier || targetBottle.supplier || 'Bottle Supplier'}. Invoice: ${meta.invoiceNo || 'N/A'}. Rate: Rs ${meta.purchasePrice || targetBottle.purchase_price}. ${meta.notes || ''}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      const client = getSupabase();
+      if (client && isSupabaseWorking) {
+        try {
+          await client.from('inventory_transactions').insert({
+            id: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            transaction_type: 'Stock In',
+            item_type: 'Empty Bottle',
+            item_name: targetBottle.name,
+            size_name: targetBottle.size || 'Bottle',
+            quantity: qty,
+            unit: 'bottles',
+            reference_no: meta.invoiceNo || 'BTL-IN',
+            notes: `Received ${qty} empty bottles from ${meta.supplier || targetBottle.supplier || 'Supplier'}. Material: ${targetBottle.material || 'HDPE/PET'}`,
+            performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Admin',
+            created_at: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.warn('Supabase empty bottle sync note:', dbErr);
+        }
+      }
+
+      showToast(`🍼 Received +${qty.toLocaleString()} Empty Bottles for "${targetBottle.name}"!`);
+    } catch (err: any) {
+      console.error('Error stocking in empty bottles:', err);
+      showToast(`Error: ${err?.message || err}`);
+    }
+  };
+
+  const handleStockOutEmptyBottle = async (targetBottle: any, qty: any, meta: any = {}) => {
+    try {
+      const newQty = Math.max(0, Number(targetBottle.quantity || 0) - qty);
+      setEmptyBottles(prev => prev.map(b => b.id === targetBottle.id ? { ...b, quantity: newQty } : b));
+
+      const newTx = {
+        id: `TX-BTL-OUT-${Date.now()}`,
+        type: 'STOCK_OUT',
+        item_type: 'EMPTY_BOTTLE',
+        product_name: targetBottle.name,
+        size: targetBottle.size || 'Bottle',
+        quantity: qty,
+        unit: 'bottles',
+        details: `Issued -${qty} Empty Bottles to ${meta.packagingLine || 'Filling & Bottling Line'}. Batch: ${meta.batchNo || 'N/A'}. ${meta.notes || ''}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      const client = getSupabase();
+      if (client && isSupabaseWorking) {
+        try {
+          await client.from('inventory_transactions').insert({
+            id: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            transaction_type: 'Stock Out',
+            item_type: 'Empty Bottle',
+            item_name: targetBottle.name,
+            size_name: targetBottle.size || 'Bottle',
+            quantity: qty,
+            unit: 'bottles',
+            reference_no: meta.batchNo || 'FILL-LINE',
+            notes: `Issued ${qty} empty bottles to ${meta.packagingLine || 'Filling Line'}`,
+            performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Admin',
+            created_at: new Date().toISOString()
+          });
+        } catch (dbErr) {
+          console.warn('Supabase empty bottle issue sync note:', dbErr);
+        }
+      }
+
+      showToast(`⚡ Issued -${qty.toLocaleString()} Empty Bottles to ${meta.packagingLine || 'Filling Floor'}!`);
+    } catch (err: any) {
+      console.error('Error issuing empty bottles:', err);
+      showToast(`Error: ${err?.message || err}`);
+    }
+  };
+
+  const handleAdjustEmptyBottle = async (targetBottle: any, newCount: any, reason?: any) => {
+    try {
+      const oldCount = Number(targetBottle.quantity || 0);
+      const diff = newCount - oldCount;
+      setEmptyBottles(prev => prev.map(b => b.id === targetBottle.id ? { ...b, quantity: newCount } : b));
+
+      const newTx = {
+        id: `TX-BTL-ADJ-${Date.now()}`,
+        type: 'STOCK_ADJUSTMENT',
+        item_type: 'EMPTY_BOTTLE',
+        product_name: targetBottle.name,
+        size: targetBottle.size || 'Bottle',
+        quantity: newCount,
+        unit: 'bottles',
+        details: `Adjusted Stock: Was ${oldCount} -> Now ${newCount} bottles. Diff: ${diff >= 0 ? '+' : ''}${diff}. Reason: ${reason || 'Physical Audit'}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      showToast(`✅ "${targetBottle.name}" stock updated to ${newCount.toLocaleString()} bottles.`);
+    } catch (err: any) {
+      console.error('Bottle adjust error:', err);
+      showToast(`Error: ${err?.message || err}`);
+    }
+  };
+
+  const handleDamageEmptyBottle = async (targetBottle: any, dmgQty: any, reason?: any) => {
+    try {
+      setEmptyBottles(prev => prev.map(b => {
+        if (b.id === targetBottle.id) {
+          return {
+            ...b,
+            quantity: Math.max(0, Number(b.quantity || 0) - dmgQty),
+            damaged_quantity: Number(b.damaged_quantity || 0) + dmgQty
+          };
+        }
+        return b;
+      }));
+
+      const newTx = {
+        id: `TX-BTL-DMG-${Date.now()}`,
+        type: 'DAMAGE',
+        item_type: 'EMPTY_BOTTLE',
+        product_name: targetBottle.name,
+        size: targetBottle.size || 'Bottle',
+        quantity: dmgQty,
+        unit: 'bottles',
+        details: `Logged ${dmgQty} Damaged / Deformed Empty Bottles. Reason: ${reason || 'Defective / Crushed'}`,
+        performed_by: currentUser?.user_metadata?.full_name || currentUser?.email || 'Warehouse Manager',
+        created_at: new Date().toISOString()
+      };
+      setTransactions(prev => [newTx, ...prev]);
+
+      showToast(`⚠️ Logged ${dmgQty} damaged bottles for "${targetBottle.name}".`);
+    } catch (err: any) {
+      console.error('Bottle damage error:', err);
+      showToast(`Error: ${err?.message || err}`);
+    }
+  };
+
+  const handleAddNewEmptyBottle = (newBottle: any) => {
+    setEmptyBottles(prev => [newBottle, ...prev]);
+    showToast(`✨ Added new empty bottle SKU: "${newBottle.name}"!`);
+  };
+
+  const handleDeleteEmptyBottle = (targetBottle: any) => {
+    setEmptyBottles(prev => prev.filter(b => b.id !== targetBottle.id));
+    showToast(`🗑️ Removed "${targetBottle.name}".`);
+  };
+
   // ----------------- Gate Pass Handlers -----------------
   const handleIssueGatePass = async (newGatePass) => {
     try {
@@ -843,6 +1011,16 @@ export default function WarehouseManagementApp() {
         } catch (e) { }
       }
 
+      const savedEmptyBottles = localStorage.getItem('wms_emptyBottles');
+      if (savedEmptyBottles) {
+        try {
+          const parsed = JSON.parse(savedEmptyBottles);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setEmptyBottles(parsed);
+          }
+        } catch (e) { }
+      }
+
       const savedGatePasses = localStorage.getItem('wms_gatePasses');
       if (savedGatePasses) {
         try {
@@ -874,13 +1052,14 @@ export default function WarehouseManagementApp() {
       localStorage.setItem('wms_stickers', JSON.stringify(stickers));
       localStorage.setItem('wms_rawMaterials', JSON.stringify(rawMaterials));
       localStorage.setItem('wms_emptyCartons', JSON.stringify(emptyCartons));
+      localStorage.setItem('wms_emptyBottles', JSON.stringify(emptyBottles));
       localStorage.setItem('wms_gatePasses', JSON.stringify(gatePasses));
       localStorage.setItem('wms_suppliers', JSON.stringify(suppliers));
       localStorage.setItem('wms_transactions', JSON.stringify(transactions));
     } catch (e) {
       console.warn('localStorage save error:', e);
     }
-  }, [products, productSizes, stickers, rawMaterials, emptyCartons, gatePasses, suppliers, transactions]);
+  }, [products, productSizes, stickers, rawMaterials, emptyCartons, emptyBottles, gatePasses, suppliers, transactions]);
 
   // Test Supabase connection on mount and auto-fetch live tables
   useEffect(() => {
@@ -923,7 +1102,17 @@ export default function WarehouseManagementApp() {
     return acc + ((s.quantity || 0) * (s.purchase_price || 0));
   }, 0);
 
-  const totalInventoryValue = finishedInventoryValue + rawInventoryValue + stickersValuation;
+  // Empty Bottles Valuation = Available Bottles × Purchase Rate
+  const emptyBottlesValuation = emptyBottles.reduce((acc, b) => {
+    return acc + ((Number(b.quantity) || 0) * (Number(b.purchase_price) || 0));
+  }, 0);
+
+  // Empty Cartons Valuation = Available Boxes × Purchase Rate
+  const emptyCartonsValuation = emptyCartons.reduce((acc, c) => {
+    return acc + ((Number(c.quantity) || 0) * (Number(c.purchase_price) || 0));
+  }, 0);
+
+  const totalInventoryValue = finishedInventoryValue + rawInventoryValue + stickersValuation + emptyBottlesValuation + emptyCartonsValuation;
 
   // Low Stock Items & Out of Stock Items Calculation
   const lowStockFinished = productSizes.filter(s => s.bottle_quantity > 0 && s.bottle_quantity <= s.minimum_stock);
@@ -942,8 +1131,11 @@ export default function WarehouseManagementApp() {
     ? stickers.reduce((acc, s) => acc + (s.damaged_quantity || 0), 0)
     : productSizes.reduce((acc, s) => acc + (s.damaged_stickers || 0), 0);
 
-  const totalLowStockCount = lowStockFinished.length + lowStockRaw.length + lowStockStickers.length;
-  const totalOutOfStockCount = outOfStockFinished.length + outOfStockRaw.length + outOfStockStickers.length;
+  const lowStockEmptyBottles = emptyBottles.filter(b => (Number(b.quantity) || 0) > 0 && (Number(b.quantity) || 0) <= (Number(b.minimum_stock) || 200));
+  const outOfStockEmptyBottles = emptyBottles.filter(b => (Number(b.quantity) || 0) <= 0);
+
+  const totalLowStockCount = lowStockFinished.length + lowStockRaw.length + lowStockStickers.length + lowStockEmptyBottles.length;
+  const totalOutOfStockCount = outOfStockFinished.length + outOfStockRaw.length + outOfStockStickers.length + outOfStockEmptyBottles.length;
 
   // Parent product lookup helper
   const getProductForSize = (s) => {
@@ -3487,10 +3679,23 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
             onClick={() => { setActiveTab('empty_cartons'); setMobileMenuOpen(false); }}
           >
             <Layers size={18} />
-            <span>Empty Cartons</span>
+            <span>Empty Cartons (خالی کارٹن)</span>
             {emptyCartons.reduce((acc, c) => acc + Number(c.quantity || 0), 0) > 0 && (
               <span className="nav-badge emerald">
                 {emptyCartons.reduce((acc, c) => acc + Number(c.quantity || 0), 0).toLocaleString()} Pcs
+              </span>
+            )}
+          </div>
+
+          <div
+            className={`nav-item ${activeTab === 'empty_bottles' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('empty_bottles'); setMobileMenuOpen(false); }}
+          >
+            <Package size={18} />
+            <span>Empty Bottles (خالی بوتلیں)</span>
+            {emptyBottles.reduce((acc, b) => acc + Number(b.quantity || 0), 0) > 0 && (
+              <span className="nav-badge info">
+                {emptyBottles.reduce((acc, b) => acc + Number(b.quantity || 0), 0).toLocaleString()} Pcs
               </span>
             )}
           </div>
@@ -3500,10 +3705,12 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
             onClick={() => { setActiveTab('stickers'); setMobileMenuOpen(false); }}
           >
             <Tag size={18} />
-            <span>Labels & Stickers</span>
-            {lowStockStickers.length > 0 && (
+            <span>Labels Inventory (لیبلز / سٹیکرز)</span>
+            {lowStockStickers.length > 0 ? (
               <span className="nav-badge danger">{lowStockStickers.length} Low</span>
-            )}
+            ) : totalStickers > 0 ? (
+              <span className="nav-badge emerald">{totalStickers.toLocaleString()} Pcs</span>
+            ) : null}
           </div>
 
           <div
@@ -4474,6 +4681,23 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
               onDamage={handleDamageEmptyCarton}
               onAddNewCarton={handleAddNewEmptyCarton}
               onDeleteCarton={handleDeleteEmptyCarton}
+              showToast={showToast}
+            />
+          )}
+
+          {/* ========================================================
+              VIEW: EMPTY BOTTLES INVENTORY (خالی بوتلیں اور کینز)
+             ======================================================== */}
+          {activeTab === 'empty_bottles' && (
+            <EmptyBottlesInventory
+              emptyBottles={emptyBottles}
+              setEmptyBottles={setEmptyBottles}
+              onStockIn={handleStockInEmptyBottle}
+              onStockOut={handleStockOutEmptyBottle}
+              onAdjust={handleAdjustEmptyBottle}
+              onDamage={handleDamageEmptyBottle}
+              onAddNewBottle={handleAddNewEmptyBottle}
+              onDeleteBottle={handleDeleteEmptyBottle}
               showToast={showToast}
             />
           )}
