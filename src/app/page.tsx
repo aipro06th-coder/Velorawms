@@ -132,39 +132,39 @@ export const getBottlesPerCarton = (sizeObj, productName = '') => {
 
 export default function WarehouseManagementApp() {
   // Authentication state
-  const [currentUser, setCurrentUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
 
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [sizeFilter, setSizeFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [toastMessage, setToastMessage] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
+  const [sizeFilter, setSizeFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [toastMessage, setToastMessage] = useState<string>('');
 
   // Domain state - Loaded directly from Database
-  const [products, setProducts] = useState([]);
-  const [productSizes, setProductSizes] = useState([]);
-  const [stickers, setStickers] = useState([]);
-  const [rawMaterials, setRawMaterials] = useState([]);
-  const [emptyCartons, setEmptyCartons] = useState(DEFAULT_EMPTY_CARTONS);
-  const [gatePasses, setGatePasses] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
-  const [transactions, setTransactions] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [productSizes, setProductSizes] = useState<any[]>([]);
+  const [stickers, setStickers] = useState<any[]>([]);
+  const [rawMaterials, setRawMaterials] = useState<any[]>([]);
+  const [emptyCartons, setEmptyCartons] = useState<any[]>(DEFAULT_EMPTY_CARTONS);
+  const [gatePasses, setGatePasses] = useState<any[]>([]);
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
 
   // Supabase state
-  const [isSupabaseWorking, setIsSupabaseWorking] = useState(false);
-  const [supabaseUrl] = useState(process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ihbnnwdkggayjyxazpkc.supabase.co');
-  const [supabaseKey] = useState(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_BR3QrHhJGqMawC5UvVyfzQ_tJWk7aQl');
-  const [isCopiedSql, setIsCopiedSql] = useState(false);
+  const [isSupabaseWorking, setIsSupabaseWorking] = useState<boolean>(false);
+  const [supabaseUrl] = useState<string>(process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ihbnnwdkggayjyxazpkc.supabase.co');
+  const [supabaseKey] = useState<string>(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_BR3QrHhJGqMawC5UvVyfzQ_tJWk7aQl');
+  const [isCopiedSql, setIsCopiedSql] = useState<boolean>(false);
 
   // Modals state
-  const [modalType, setModalType] = useState(null); // 'STOCK_IN', 'STOCK_OUT', 'ADJUSTMENT', 'DAMAGE', 'RETURN', 'ADD_PRODUCT', 'ADD_RAW', 'ADD_STICKER', 'EDIT_STICKER', 'SUPABASE'
-  const [selectedItem, setSelectedItem] = useState(null);
+  const [modalType, setModalType] = useState<any>(null); // 'STOCK_IN', 'STOCK_OUT', 'ADJUSTMENT', 'DAMAGE', 'RETURN', 'ADD_PRODUCT', 'ADD_RAW', 'ADD_STICKER', 'EDIT_STICKER', 'SUPABASE'
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
   // Form states
-  const [stockForm, setStockForm] = useState({
+  const [stockForm, setStockForm] = useState<any>({
     itemType: 'FINISHED',
     productId: '',
     sizeId: '',
@@ -184,7 +184,7 @@ export default function WarehouseManagementApp() {
     entryMode: 'CARTON'
   });
 
-  const [newProductForm, setNewProductForm] = useState({
+  const [newProductForm, setNewProductForm] = useState<any>({
     name: '',
     category: PRODUCT_CATEGORIES[0].label,
     customCategory: '',
@@ -192,7 +192,7 @@ export default function WarehouseManagementApp() {
     sizes: PRODUCT_CATEGORIES[0].sizes.map(s => ({ ...s }))
   });
 
-  const [newRawForm, setNewRawForm] = useState({
+  const [newRawForm, setNewRawForm] = useState<any>({
     name: '',
     unit: 'Liters',
     quantity: 0,
@@ -201,7 +201,7 @@ export default function WarehouseManagementApp() {
     weight_per_bori_kg: 25
   });
 
-  const [newSupplierForm, setNewSupplierForm] = useState({
+  const [newSupplierForm, setNewSupplierForm] = useState<any>({
     name: '',
     company_name: '',
     phone: '',
@@ -209,7 +209,7 @@ export default function WarehouseManagementApp() {
     address: ''
   });
 
-  const [editSizeForm, setEditSizeForm] = useState({
+  const [editSizeForm, setEditSizeForm] = useState<any>({
     id: '',
     productId: '',
     productName: '',
@@ -220,7 +220,7 @@ export default function WarehouseManagementApp() {
     minStock: ''
   });
 
-  const [editRawForm, setEditRawForm] = useState({
+  const [editRawForm, setEditRawForm] = useState<any>({
     id: '',
     name: '',
     unit: 'Liters',
@@ -230,7 +230,7 @@ export default function WarehouseManagementApp() {
     weight_per_bori_kg: 25
   });
 
-  const [newStickerForm, setNewStickerForm] = useState({
+  const [newStickerForm, setNewStickerForm] = useState<any>({
     name: '',
     category: 'Sweep / Toilet Cleaner',
     size: '600ml Bottle',
@@ -242,7 +242,7 @@ export default function WarehouseManagementApp() {
     notes: ''
   });
 
-  const [editStickerForm, setEditStickerForm] = useState({
+  const [editStickerForm, setEditStickerForm] = useState<any>({
     id: '',
     name: '',
     category: 'Sweep / Toilet Cleaner',
@@ -335,7 +335,7 @@ export default function WarehouseManagementApp() {
   };
 
   // ----------------- Filled Cartons Handlers -----------------
-  const handlePackCartons = async (targetSize, cartonsToAdd, meta = {}) => {
+  const handlePackCartons = async (targetSize: any, cartonsToAdd: any, meta: any = {}) => {
     try {
       const newCartons = (targetSize.carton_quantity || 0) + cartonsToAdd;
       const bpc = getBottlesPerCarton(targetSize);
@@ -404,7 +404,7 @@ export default function WarehouseManagementApp() {
     }
   };
 
-  const handleDispatchCartons = async (targetSize, cartonsToSub, meta = {}) => {
+  const handleDispatchCartons = async (targetSize: any, cartonsToSub: any, meta: any = {}) => {
     try {
       const newCartons = Math.max(0, (targetSize.carton_quantity || 0) - cartonsToSub);
       const bpc = getBottlesPerCarton(targetSize);
@@ -473,7 +473,7 @@ export default function WarehouseManagementApp() {
     }
   };
 
-  const handleAdjustCartons = async (targetSize, newCartonCount, reason = 'Opening physical stock count') => {
+  const handleAdjustCartons = async (targetSize: any, newCartonCount: any, reason: any = 'Opening physical stock count') => {
     try {
       const bpc = getBottlesPerCarton(targetSize);
       const oldCartons = targetSize.carton_quantity || 0;
@@ -532,7 +532,7 @@ export default function WarehouseManagementApp() {
   };
 
   // ----------------- Empty Cartons Handlers -----------------
-  const handleStockInEmptyCarton = async (targetCarton, qty, meta = {}) => {
+  const handleStockInEmptyCarton = async (targetCarton: any, qty: any, meta: any = {}) => {
     try {
       const newQty = Number(targetCarton.quantity || 0) + qty;
       setEmptyCartons(prev => prev.map(c => c.id === targetCarton.id ? { ...c, quantity: newQty } : c));
@@ -581,7 +581,7 @@ export default function WarehouseManagementApp() {
     }
   };
 
-  const handleStockOutEmptyCarton = async (targetCarton, qty, meta = {}) => {
+  const handleStockOutEmptyCarton = async (targetCarton: any, qty: any, meta: any = {}) => {
     try {
       const newQty = Math.max(0, Number(targetCarton.quantity || 0) - qty);
       setEmptyCartons(prev => prev.map(c => c.id === targetCarton.id ? { ...c, quantity: newQty } : c));
@@ -630,7 +630,7 @@ export default function WarehouseManagementApp() {
     }
   };
 
-  const handleAdjustEmptyCarton = async (targetCarton, newCount, reason) => {
+  const handleAdjustEmptyCarton = async (targetCarton: any, newCount: any, reason?: any) => {
     try {
       const oldCount = Number(targetCarton.quantity || 0);
       const diff = newCount - oldCount;
@@ -2841,9 +2841,9 @@ export default function WarehouseManagementApp() {
     const pp = parseFloat(editSizeForm.purchasePrice) || 0;
     const sp = parseFloat(editSizeForm.sellingPrice) || 0;
     const minStock = parseInt(editSizeForm.minStock, 10) || 0;
-    const btls = parseInt(editSizeForm.bottleQuantity || 0, 10);
+    const btls = parseInt(String(editSizeForm.bottleQuantity || 0), 10);
     const ctns = editSizeForm.cartonQuantity !== '' && editSizeForm.cartonQuantity !== undefined
-      ? parseInt(editSizeForm.cartonQuantity, 10)
+      ? parseInt(String(editSizeForm.cartonQuantity), 10)
       : Math.floor(btls / bpc);
 
     setProductSizes(prev => prev.map(s => {
@@ -3782,7 +3782,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
               {/* Main 8 Metric Cards Grid (Section 13 & 40) */}
               <div className="kpi-grid-8">
                 {/* 1. Total Products */}
-                <div className="kpi-card" style={{ '--card-accent': '#0284c7' }}>
+                <div className="kpi-card" style={{ '--card-accent': '#0284c7' } as React.CSSProperties}>
                   <div className="kpi-top">
                     <span className="kpi-title">Total Products</span>
                     <div className="kpi-icon-wrap" style={{ background: '#f0f9ff', color: '#0284c7' }}>
@@ -3796,7 +3796,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                 </div>
 
                 {/* 2. Total Bottles */}
-                <div className="kpi-card" style={{ '--card-accent': '#2563eb' }}>
+                <div className="kpi-card" style={{ '--card-accent': '#2563eb' } as React.CSSProperties}>
                   <div className="kpi-top">
                     <span className="kpi-title">Total Bottles</span>
                     <div className="kpi-icon-wrap" style={{ background: '#eff6ff', color: '#2563eb' }}>
@@ -3810,7 +3810,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                 </div>
 
                 {/* 3. Total Cartons */}
-                <div className="kpi-card" style={{ '--card-accent': '#d97706' }}>
+                <div className="kpi-card" style={{ '--card-accent': '#d97706' } as React.CSSProperties}>
                   <div className="kpi-top">
                     <span className="kpi-title">Total Cartons</span>
                     <div className="kpi-icon-wrap" style={{ background: '#fffbeb', color: '#d97706' }}>
@@ -3824,7 +3824,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                 </div>
 
                 {/* 4. Total Stickers */}
-                <div className="kpi-card" style={{ '--card-accent': '#7c3aed' }}>
+                <div className="kpi-card" style={{ '--card-accent': '#7c3aed' } as React.CSSProperties}>
                   <div className="kpi-top">
                     <span className="kpi-title">Total Stickers</span>
                     <div className="kpi-icon-wrap" style={{ background: '#faf5ff', color: '#7c3aed' }}>
@@ -3838,7 +3838,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                 </div>
 
                 {/* 5. Total Raw Materials */}
-                <div className="kpi-card" style={{ '--card-accent': '#059669' }}>
+                <div className="kpi-card" style={{ '--card-accent': '#059669' } as React.CSSProperties}>
                   <div className="kpi-top">
                     <span className="kpi-title">Raw Materials</span>
                     <div className="kpi-icon-wrap" style={{ background: '#ecfdf5', color: '#059669' }}>
@@ -3852,7 +3852,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                 </div>
 
                 {/* 6. Total Inventory Value */}
-                <div className="kpi-card" style={{ '--card-accent': '#0284c7' }}>
+                <div className="kpi-card" style={{ '--card-accent': '#0284c7' } as React.CSSProperties}>
                   <div className="kpi-top">
                     <span className="kpi-title">Total Inventory Value</span>
                     <div className="kpi-icon-wrap" style={{ background: '#f0f9ff', color: '#0284c7' }}>
@@ -3866,7 +3866,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                 </div>
 
                 {/* 7. Low Stock Items */}
-                <div className="kpi-card" style={{ '--card-accent': '#d97706' }}>
+                <div className="kpi-card" style={{ '--card-accent': '#d97706' } as React.CSSProperties}>
                   <div className="kpi-top">
                     <span className="kpi-title">Low Stock Items</span>
                     <div className="kpi-icon-wrap" style={{ background: '#fffbeb', color: '#d97706' }}>
@@ -3882,7 +3882,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                 </div>
 
                 {/* 8. Out of Stock Items */}
-                <div className="kpi-card" style={{ '--card-accent': '#e11d48' }}>
+                <div className="kpi-card" style={{ '--card-accent': '#e11d48' } as React.CSSProperties}>
                   <div className="kpi-top">
                     <span className="kpi-title">Out of Stock</span>
                     <div className="kpi-icon-wrap" style={{ background: '#fff1f2', color: '#e11d48' }}>
@@ -4011,7 +4011,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                     <tbody>
                       {filteredProductSizes.length === 0 ? (
                         <tr>
-                          <td colSpan="9" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                          <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
                             No finished products match the selected criteria.
                           </td>
                         </tr>
@@ -4175,7 +4175,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                     <tbody>
                       {filteredRawMaterials.length === 0 ? (
                         <tr>
-                          <td colSpan="7" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
+                          <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>
                             No raw materials registered yet. Click &quot;+ Stock In Raw Material&quot; or &quot;New Material&quot; to add raw materials.
                           </td>
                         </tr>
@@ -5528,7 +5528,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                               style={{ fontSize: '1.15rem', fontWeight: 800, color: '#b45309', borderColor: '#fde68a', background: '#fffbeb' }}
                               value={stockForm.cartonQty}
                               onChange={(e) => {
-                                const ctns = parseInt(e.target.value || 0, 10);
+                                const ctns = parseInt(e.target.value || '0', 10);
                                 const activeSize = productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id));
                                 const bpc = getBottlesPerCarton(activeSize);
                                 setStockForm({
@@ -5540,7 +5540,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                               }}
                             />
                             <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                              = {parseInt(stockForm.cartonQty || 0, 10) * getBottlesPerCarton(productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id)))} Total Bottles filled & packed
+                              = {parseInt(String(stockForm.cartonQty || '0'), 10) * getBottlesPerCarton(productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id)))} Total Bottles filled & packed
                             </span>
                           </div>
 
@@ -5553,7 +5553,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                               style={{ fontSize: '1.05rem', fontWeight: 700 }}
                               value={stockForm.bottleQty}
                               onChange={(e) => {
-                                const btls = parseInt(e.target.value || 0, 10);
+                                const btls = parseInt(e.target.value || '0', 10);
                                 const activeSize = productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id));
                                 const bpc = getBottlesPerCarton(activeSize);
                                 setStockForm({
@@ -5581,7 +5581,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                               style={{ fontSize: '1.1rem', fontWeight: 700 }}
                               value={stockForm.bottleQty}
                               onChange={(e) => {
-                                const btls = parseInt(e.target.value || 0, 10);
+                                const btls = parseInt(e.target.value || '0', 10);
                                 const activeSize = productSizes.find(s => String(s.id) === String(stockForm.sizeId || productSizes[0]?.id));
                                 const bpc = getBottlesPerCarton(activeSize);
                                 setStockForm({
@@ -6759,7 +6759,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                       value={editSizeForm.bottleQuantity ?? ''}
                       onChange={(e) => {
                         const val = e.target.value;
-                        const btls = parseInt(val || 0, 10);
+                        const btls = parseInt(val || '0', 10);
                         const bpc = getBottlesPerCarton({
                           bottles_per_carton: editSizeForm.bottlesPerCarton,
                           product_name: editSizeForm.productName,
@@ -6786,7 +6786,7 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
                       value={editSizeForm.cartonQuantity ?? ''}
                       onChange={(e) => {
                         const val = e.target.value;
-                        const ctns = parseInt(val || 0, 10);
+                        const ctns = parseInt(val || '0', 10);
                         const bpc = getBottlesPerCarton({
                           bottles_per_carton: editSizeForm.bottlesPerCarton,
                           product_name: editSizeForm.productName,

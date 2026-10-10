@@ -6,21 +6,17 @@ import {
   Plus,
   Minus,
   Search,
-  Trash2,
-  AlertTriangle,
-  Boxes,
-  TrendingUp,
-  Scale
+  Trash2
 } from 'lucide-react';
+import { RawMaterialsInventoryProps, RawMaterial } from '../types';
 
 export default function RawMaterialsInventory({
   rawMaterials = [],
   onStockIn,
   onStockOut,
   onAddNewMaterial,
-  onDeleteRawMaterial,
-  showToast
-}) {
+  onDeleteRawMaterial
+}: RawMaterialsInventoryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [unitFilter, setUnitFilter] = useState('ALL');
 
@@ -208,17 +204,17 @@ export default function RawMaterialsInventory({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
                     <FlaskConical size={40} style={{ margin: '0 auto 10px', opacity: 0.3, color: '#059669' }} />
                     <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>No Raw Materials Found</div>
                     <div style={{ fontSize: '0.85rem' }}>No materials match your search. Click &apos;+ Stock In Chemical / Raw&apos; to add.</div>
                   </td>
                 </tr>
               ) : (
-                filtered.map(r => {
+                filtered.map((r: RawMaterial) => {
                   const isTSP = (r.unit || '').includes('Bori');
-                  const totalKg = isTSP ? (r.quantity * (r.weight_per_bori_kg || 25)) : 0;
-                  const val = isTSP ? (totalKg * (r.purchase_price || 0)) : (r.quantity * (r.purchase_price || 0));
+                  const totalKg = isTSP ? ((r.quantity || 0) * (r.weight_per_bori_kg || 25)) : 0;
+                  const val = isTSP ? (totalKg * (r.purchase_price || 0)) : ((r.quantity || 0) * (r.purchase_price || 0));
 
                   return (
                     <tr key={r.id}>

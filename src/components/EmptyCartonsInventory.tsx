@@ -126,6 +126,8 @@ export const DEFAULT_EMPTY_CARTONS = [
   }
 ];
 
+import { EmptyCartonsInventoryProps, EmptyCarton } from '../types';
+
 export default function EmptyCartonsInventory({
   emptyCartons = [],
   setEmptyCartons,
@@ -136,18 +138,24 @@ export default function EmptyCartonsInventory({
   onAddNewCarton,
   onDeleteCarton,
   showToast
-}) {
+}: EmptyCartonsInventoryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table'); // 'table' | 'cards'
 
   // Modals state
-  const [activeModal, setActiveModal] = useState(null); // 'STOCK_IN' | 'STOCK_OUT' | 'ADJUST' | 'DAMAGE' | 'ADD_NEW' | 'EDIT'
-  const [selectedCarton, setSelectedCarton] = useState(null);
+  const [activeModal, setActiveModal] = useState<'STOCK_IN' | 'STOCK_OUT' | 'ADJUST' | 'DAMAGE' | 'ADD_NEW' | 'EDIT' | null>(null); // 'STOCK_IN' | 'STOCK_OUT' | 'ADJUST' | 'DAMAGE' | 'ADD_NEW' | 'EDIT'
+  const [selectedCarton, setSelectedCarton] = useState<EmptyCarton | null>(null);
 
   // Form states
-  const [stockInForm, setStockInForm] = useState({
+  const [stockInForm, setStockInForm] = useState<{
+    quantity: number | string;
+    supplier: string;
+    purchasePrice: number | string;
+    invoiceNo: string;
+    notes: string;
+  }>({
     quantity: 50,
     supplier: '',
     purchasePrice: '',
@@ -155,24 +163,45 @@ export default function EmptyCartonsInventory({
     notes: ''
   });
 
-  const [stockOutForm, setStockOutForm] = useState({
+  const [stockOutForm, setStockOutForm] = useState<{
+    quantity: number | string;
+    packagingLine: string;
+    batchNo: string;
+    notes: string;
+  }>({
     quantity: 20,
     packagingLine: 'Packaging Line 1',
     batchNo: `BATCH-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
     notes: ''
   });
 
-  const [adjustForm, setAdjustForm] = useState({
+  const [adjustForm, setAdjustForm] = useState<{
+    newQuantity: number | string;
+    reason: string;
+  }>({
     newQuantity: 0,
     reason: 'Monthly physical warehouse audit'
   });
 
-  const [damageForm, setDamageForm] = useState({
+  const [damageForm, setDamageForm] = useState<{
+    quantity: number | string;
+    reason: string;
+  }>({
     quantity: 5,
     reason: 'Crushed during warehouse stacking'
   });
 
-  const [newCartonForm, setNewCartonForm] = useState({
+  const [newCartonForm, setNewCartonForm] = useState<{
+    name: string;
+    category: string;
+    size: string;
+    bottle_capacity: number | string;
+    quantity: number | string;
+    minimum_stock: number | string;
+    purchase_price: number | string;
+    supplier: string;
+    spec: string;
+  }>({
     name: '',
     category: 'Sweep / Toilet Cleaner',
     size: '600ml Bottle',
@@ -184,7 +213,17 @@ export default function EmptyCartonsInventory({
     spec: '3-Ply Corrugated Printed Box'
   });
 
-  const [editCartonForm, setEditCartonForm] = useState({
+  const [editCartonForm, setEditCartonForm] = useState<{
+    id: string;
+    name: string;
+    category: string;
+    size: string;
+    bottle_capacity: number | string;
+    minimum_stock: number | string;
+    purchase_price: number | string;
+    supplier: string;
+    spec: string;
+  }>({
     id: '',
     name: '',
     category: '',
@@ -286,10 +325,10 @@ export default function EmptyCartonsInventory({
   };
 
   // Submit Stock In
-  const handleStockInSubmit = (e) => {
+  const handleStockInSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCarton) return;
-    const qty = parseInt(stockInForm.quantity, 10);
+    const qty = parseInt(String(stockInForm.quantity), 10);
     if (!qty || qty <= 0) {
       if (showToast) showToast('Please enter a valid quantity.');
       return;
@@ -308,10 +347,10 @@ export default function EmptyCartonsInventory({
   };
 
   // Submit Stock Out / Issue to Packing Floor
-  const handleStockOutSubmit = (e) => {
+  const handleStockOutSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCarton) return;
-    const qty = parseInt(stockOutForm.quantity, 10);
+    const qty = parseInt(String(stockOutForm.quantity), 10);
     if (!qty || qty <= 0) {
       if (showToast) showToast('Please enter a valid quantity.');
       return;
@@ -335,10 +374,10 @@ export default function EmptyCartonsInventory({
   };
 
   // Submit Adjustment
-  const handleAdjustSubmit = (e) => {
+  const handleAdjustSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCarton) return;
-    const newQty = Math.max(0, parseInt(adjustForm.newQuantity, 10) || 0);
+    const newQty = Math.max(0, parseInt(String(adjustForm.newQuantity), 10) || 0);
 
     if (onAdjust) {
       onAdjust(selectedCarton, newQty, adjustForm.reason);
@@ -353,10 +392,10 @@ export default function EmptyCartonsInventory({
   };
 
   // Submit Damage
-  const handleDamageSubmit = (e) => {
+  const handleDamageSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCarton) return;
-    const dmgQty = parseInt(damageForm.quantity, 10);
+    const dmgQty = parseInt(String(damageForm.quantity), 10);
     if (!dmgQty || dmgQty <= 0) return;
 
     if (onDamage) {
@@ -381,7 +420,7 @@ export default function EmptyCartonsInventory({
   };
 
   // Submit Add New SKU
-  const handleAddNewSubmit = (e) => {
+  const handleAddNewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCartonForm.name.trim()) {
       if (showToast) showToast('Please enter a carton name.');
@@ -393,11 +432,11 @@ export default function EmptyCartonsInventory({
       name: newCartonForm.name.trim(),
       category: newCartonForm.category,
       size: newCartonForm.size,
-      bottle_capacity: parseInt(newCartonForm.bottle_capacity, 10) || 12,
-      quantity: parseInt(newCartonForm.quantity, 10) || 0,
+      bottle_capacity: parseInt(String(newCartonForm.bottle_capacity), 10) || 12,
+      quantity: parseInt(String(newCartonForm.quantity), 10) || 0,
       damaged_quantity: 0,
-      minimum_stock: parseInt(newCartonForm.minimum_stock, 10) || 100,
-      purchase_price: parseFloat(newCartonForm.purchase_price) || 0,
+      minimum_stock: parseInt(String(newCartonForm.minimum_stock), 10) || 100,
+      purchase_price: parseFloat(String(newCartonForm.purchase_price)) || 0,
       supplier: newCartonForm.supplier || 'Packaging Supplier',
       spec: newCartonForm.spec || 'Standard Corrugated Box',
       status: 'In Stock'
@@ -425,7 +464,7 @@ export default function EmptyCartonsInventory({
   };
 
   // Submit Edit SKU
-  const handleEditSubmit = (e) => {
+  const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editCartonForm.id) return;
 
@@ -438,9 +477,9 @@ export default function EmptyCartonsInventory({
               name: editCartonForm.name,
               category: editCartonForm.category,
               size: editCartonForm.size,
-              bottle_capacity: parseInt(editCartonForm.bottle_capacity, 10) || 12,
-              minimum_stock: parseInt(editCartonForm.minimum_stock, 10) || 100,
-              purchase_price: parseFloat(editCartonForm.purchase_price) || 0,
+              bottle_capacity: parseInt(String(editCartonForm.bottle_capacity), 10) || 12,
+              minimum_stock: parseInt(String(editCartonForm.minimum_stock), 10) || 100,
+              purchase_price: parseFloat(String(editCartonForm.purchase_price)) || 0,
               supplier: editCartonForm.supplier,
               spec: editCartonForm.spec
             };
@@ -1469,7 +1508,7 @@ export default function EmptyCartonsInventory({
                     autoFocus
                   />
                   <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                    This delivery will provide packaging space for <strong>{(parseInt(stockInForm.quantity, 10) || 0) * (selectedCarton.bottle_capacity || 12)} bottles</strong>.
+                    This delivery will provide packaging space for <strong>{(parseInt(String(stockInForm.quantity), 10) || 0) * (selectedCarton.bottle_capacity || 12)} bottles</strong>.
                   </span>
                 </div>
 
@@ -1583,7 +1622,7 @@ export default function EmptyCartonsInventory({
                     autoFocus
                   />
                   <span style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px', display: 'block' }}>
-                    Sufficient to pack <strong>{(parseInt(stockOutForm.quantity, 10) || 0) * (selectedCarton.bottle_capacity || 12)} bottles</strong>.
+                    Sufficient to pack <strong>{(parseInt(String(stockOutForm.quantity), 10) || 0) * (selectedCarton.bottle_capacity || 12)} bottles</strong>.
                   </span>
                 </div>
 

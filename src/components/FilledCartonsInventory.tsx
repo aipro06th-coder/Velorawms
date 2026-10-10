@@ -24,7 +24,9 @@ import {
   Check
 } from 'lucide-react';
 
-export const getBottlesPerCarton = (s) => {
+import { FilledCartonsInventoryProps, ProductSize, Product } from '../types';
+
+export const getBottlesPerCarton = (s?: any): number => {
   if (!s) return 24;
   const combined = `${s.product_name || ''} ${s.size || s.size_name || s.name || ''}`.toLowerCase();
 
@@ -68,18 +70,25 @@ export default function FilledCartonsInventory({
   onOpenAddProduct,
   onOpenGatePass,
   showToast
-}) {
+}: FilledCartonsInventoryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [stockStatusFilter, setStockStatusFilter] = useState('ALL'); // 'ALL' | 'IN_STOCK' | 'LOW_STOCK' | 'OUT_OF_STOCK'
-  const [viewMode, setViewMode] = useState('table'); // 'table' | 'cards'
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table'); // 'table' | 'cards'
 
   // Modals state
-  const [activeModal, setActiveModal] = useState(null); // 'PACK' | 'DISPATCH' | 'PRINT_LABEL' | 'ADJUST'
-  const [selectedSize, setSelectedSize] = useState(null);
+  const [activeModal, setActiveModal] = useState<'PACK' | 'DISPATCH' | 'PRINT_LABEL' | 'ADJUST' | null>(null); // 'PACK' | 'DISPATCH' | 'PRINT_LABEL' | 'ADJUST'
+  const [selectedSize, setSelectedSize] = useState<ProductSize | null>(null);
 
   // Form states
-  const [packForm, setPackForm] = useState({
+  const [packForm, setPackForm] = useState<{
+    sizeId: string;
+    cartonsToPack: number | string;
+    palletLocation: string;
+    batchNo: string;
+    packingDate: string;
+    notes: string;
+  }>({
     sizeId: '',
     cartonsToPack: 10,
     palletLocation: 'Pallet Bay A-01',
@@ -88,7 +97,13 @@ export default function FilledCartonsInventory({
     notes: ''
   });
 
-  const [dispatchForm, setDispatchForm] = useState({
+  const [dispatchForm, setDispatchForm] = useState<{
+    sizeId: string;
+    cartonsToDispatch: number | string;
+    customerName: string;
+    gatePassNo: string;
+    notes: string;
+  }>({
     sizeId: '',
     cartonsToDispatch: 5,
     customerName: '',
@@ -96,7 +111,11 @@ export default function FilledCartonsInventory({
     notes: ''
   });
 
-  const [adjustForm, setAdjustForm] = useState({
+  const [adjustForm, setAdjustForm] = useState<{
+    sizeId: string;
+    cartonQuantity: number | string;
+    reason: string;
+  }>({
     sizeId: '',
     cartonQuantity: 0,
     reason: 'Opening physical stock count'
@@ -170,7 +189,7 @@ export default function FilledCartonsInventory({
   }, [productSizes, searchQuery, categoryFilter, stockStatusFilter]);
 
   // Handle Pack Submit
-  const handlePackSubmit = (e) => {
+  const handlePackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const size = productSizes.find((s) => String(s.id) === String(packForm.sizeId));
     if (!size) {
@@ -178,7 +197,7 @@ export default function FilledCartonsInventory({
       return;
     }
 
-    const ctns = parseInt(packForm.cartonsToPack, 10);
+    const ctns = parseInt(String(packForm.cartonsToPack), 10);
     if (!ctns || ctns <= 0) {
       if (showToast) showToast('Please enter a valid carton quantity.');
       return;
@@ -196,7 +215,7 @@ export default function FilledCartonsInventory({
   };
 
   // Handle Dispatch Submit
-  const handleDispatchSubmit = (e) => {
+  const handleDispatchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const size = productSizes.find((s) => String(s.id) === String(dispatchForm.sizeId));
     if (!size) {
@@ -204,7 +223,7 @@ export default function FilledCartonsInventory({
       return;
     }
 
-    const ctns = parseInt(dispatchForm.cartonsToDispatch, 10);
+    const ctns = parseInt(String(dispatchForm.cartonsToDispatch), 10);
     if (!ctns || ctns <= 0) {
       if (showToast) showToast('Please enter a valid carton quantity to dispatch.');
       return;
@@ -227,7 +246,7 @@ export default function FilledCartonsInventory({
   };
 
   // Handle Manual Set / Opening Stock Submit
-  const handleAdjustSubmit = (e) => {
+  const handleAdjustSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const size = productSizes.find((s) => String(s.id) === String(adjustForm.sizeId));
     if (!size) {
@@ -235,7 +254,7 @@ export default function FilledCartonsInventory({
       return;
     }
 
-    const ctns = parseInt(adjustForm.cartonQuantity, 10);
+    const ctns = parseInt(String(adjustForm.cartonQuantity), 10);
     if (isNaN(ctns) || ctns < 0) {
       if (showToast) showToast('Please enter a valid carton quantity (0 or more).');
       return;
@@ -341,7 +360,7 @@ export default function FilledCartonsInventory({
 
       {/* KPI Cards Grid */}
       <div className="cartons-kpi-grid">
-        <div className="carton-kpi-card" style={{ '--card-accent': '#0284c7' }}>
+        <div className="carton-kpi-card" style={{ '--card-accent': '#0284c7' } as React.CSSProperties}>
           <div className="carton-kpi-header">
             <span className="carton-kpi-label">Total Filled Cartons </span>
             <div className="carton-kpi-icon" style={{ background: '#e0f2fe', color: '#0284c7' }}>
@@ -354,7 +373,7 @@ export default function FilledCartonsInventory({
           </div>
         </div>
 
-        <div className="carton-kpi-card" style={{ '--card-accent': '#059669' }}>
+        <div className="carton-kpi-card" style={{ '--card-accent': '#059669' } as React.CSSProperties}>
           <div className="carton-kpi-header">
             <span className="carton-kpi-label">Bottles Inside Cartons </span>
             <div className="carton-kpi-icon" style={{ background: '#d1fae5', color: '#059669' }}>
@@ -367,7 +386,7 @@ export default function FilledCartonsInventory({
           </div>
         </div>
 
-        <div className="carton-kpi-card" style={{ '--card-accent': '#7c3aed' }}>
+        <div className="carton-kpi-card" style={{ '--card-accent': '#7c3aed' } as React.CSSProperties}>
           <div className="carton-kpi-header">
             <span className="carton-kpi-label">Master Cartons Valuation </span>
             <div className="carton-kpi-icon" style={{ background: '#ede9fe', color: '#7c3aed' }}>
@@ -380,7 +399,7 @@ export default function FilledCartonsInventory({
           </div>
         </div>
 
-        <div className="carton-kpi-card" style={{ '--card-accent': '#d97706' }}>
+        <div className="carton-kpi-card" style={{ '--card-accent': '#d97706' } as React.CSSProperties}>
           <div className="carton-kpi-header">
             <span className="carton-kpi-label">Low Stock Alerts </span>
             <div className="carton-kpi-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
@@ -919,7 +938,7 @@ export default function FilledCartonsInventory({
                 {(() => {
                   const sel = productSizes.find((s) => String(s.id) === String(packForm.sizeId));
                   if (!sel) return null;
-                  const ctns = parseInt(packForm.cartonsToPack, 10) || 0;
+                  const ctns = parseInt(String(packForm.cartonsToPack), 10) || 0;
                   const bpc = getBottlesPerCarton(sel);
                   const totalBtls = ctns * bpc;
                   return (
@@ -1070,7 +1089,7 @@ export default function FilledCartonsInventory({
                 {(() => {
                   const sel = productSizes.find((s) => String(s.id) === String(dispatchForm.sizeId));
                   if (!sel) return null;
-                  const ctns = parseInt(dispatchForm.cartonsToDispatch, 10) || 0;
+                  const ctns = parseInt(String(dispatchForm.cartonsToDispatch), 10) || 0;
                   const bpc = getBottlesPerCarton(sel);
                   const totalBtls = ctns * bpc;
                   return (
@@ -1198,7 +1217,7 @@ export default function FilledCartonsInventory({
                 {(() => {
                   const sel = productSizes.find((s) => String(s.id) === String(adjustForm.sizeId));
                   if (!sel) return null;
-                  const newCtns = parseInt(adjustForm.cartonQuantity, 10) || 0;
+                  const newCtns = parseInt(String(adjustForm.cartonQuantity), 10) || 0;
                   const bpc = getBottlesPerCarton(sel);
                   const newBottles = newCtns * bpc;
                   const oldCtns = sel.carton_quantity || 0;

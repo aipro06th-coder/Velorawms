@@ -10,16 +10,16 @@ import {
   EyeOff,
   ShieldCheck,
   ArrowRight,
-  Boxes,
   CheckCircle2,
   AlertCircle,
   Database,
   Key
 } from 'lucide-react';
 import { signInWithEmail, signUpWithEmail } from '../lib/supabase';
+import { AuthScreenProps, AuthUser } from '../types';
 
-export default function AuthScreen({ onLoginSuccess }) {
-  const [authMode, setAuthMode] = useState('signin'); // 'signin' | 'signup'
+export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -31,7 +31,7 @@ export default function AuthScreen({ onLoginSuccess }) {
   const [successMsg, setSuccessMsg] = useState('');
 
   // Handle Form Submit
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -54,7 +54,7 @@ export default function AuthScreen({ onLoginSuccess }) {
 
         // 1. Built-in Admin Account (Instant Access)
         if ((cleanEmail === 'admin@velora.com' || cleanEmail === 'admin@wms.com') && password === 'admin123') {
-          const adminUser = {
+          const adminUser: AuthUser = {
             id: 'admin-wms-001',
             email: cleanEmail,
             user_metadata: {
@@ -76,7 +76,6 @@ export default function AuthScreen({ onLoginSuccess }) {
         const { data, error } = await signInWithEmail(email, password);
 
         if (error) {
-          // If Supabase credentials failed or user does not exist yet
           if (error.message.includes('Invalid login credentials')) {
             throw new Error('Invalid email or password. Default Admin: admin@velora.com / admin123, or click "Create Account" above.');
           }
@@ -92,7 +91,7 @@ export default function AuthScreen({ onLoginSuccess }) {
           }
           setSuccessMsg('Login successful! Redirecting to dashboard...');
           setTimeout(() => {
-            onLoginSuccess(data.user);
+            onLoginSuccess(data.user as AuthUser);
           }, 300);
         }
       } else {
@@ -107,7 +106,7 @@ export default function AuthScreen({ onLoginSuccess }) {
         }
 
         if (data?.user) {
-          const newUser = {
+          const newUser: AuthUser = {
             ...data.user,
             user_metadata: {
               full_name: fullName || 'WMS Specialist',
@@ -123,9 +122,9 @@ export default function AuthScreen({ onLoginSuccess }) {
           }, 600);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Authentication Error:', err);
-      setErrorMsg(err.message || 'An error occurred during authentication.');
+      setErrorMsg(err?.message || 'An error occurred during authentication.');
     } finally {
       setLoading(false);
     }
@@ -265,7 +264,7 @@ export default function AuthScreen({ onLoginSuccess }) {
                 type="button"
                 className="auth-eye-btn"
                 onClick={() => setShowPassword(!showPassword)}
-                tabIndex="-1"
+                tabIndex={-1}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}

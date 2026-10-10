@@ -8,30 +8,25 @@ import {
   Search,
   AlertOctagon,
   SlidersHorizontal,
-  Trash2,
-  Layers,
-  AlertTriangle,
-  CheckCircle2,
-  Boxes
+  Trash2
 } from 'lucide-react';
+import { LabelsInventoryProps, StickerItem } from '../types';
 
 export default function LabelsInventory({
   stickers = [],
   productSizes = [],
-  products = [],
   onStockIn,
   onStockOut,
   onAddNewSticker,
   onAdjustStickers,
   onDamageStickers,
-  onDeleteSticker,
-  showToast
-}) {
+  onDeleteSticker
+}: LabelsInventoryProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   // Unified items list: prefers dedicated stickers state if populated, else falls back to productSizes sticker columns
-  const stickerItems = stickers.length > 0
+  const stickerItems: StickerItem[] = stickers.length > 0
     ? stickers
     : productSizes.map(s => ({
       id: s.id,
@@ -57,7 +52,6 @@ export default function LabelsInventory({
   const totalStickers = stickerItems.reduce((acc, s) => acc + (s.quantity || 0), 0);
   const totalDamaged = stickerItems.reduce((acc, s) => acc + (s.damaged_quantity || 0), 0);
   const lowStockCount = stickerItems.filter(s => (s.quantity || 0) > 0 && (s.quantity || 0) <= (s.minimum_stock || 500)).length;
-  const totalValuation = stickerItems.reduce((acc, s) => acc + ((s.quantity || 0) * (s.purchase_price || 2.5)), 0);
 
   return (
     <div className="labels-inventory-section" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -251,7 +245,7 @@ export default function LabelsInventory({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
                     <Tag size={40} style={{ margin: '0 auto 10px', opacity: 0.3, color: '#7c3aed' }} />
                     <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>No Labels Registered</div>
                     <div style={{ fontSize: '0.85rem' }}>No stickers found matching your search. Click &apos;+ Stock In Labels&apos; to add.</div>

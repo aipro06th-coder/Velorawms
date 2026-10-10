@@ -1,8 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, Session, AuthChangeEvent } from '@supabase/supabase-js';
 
-let supabaseClient = null;
+let supabaseClient: SupabaseClient | null = null;
 
-export function getSupabase() {
+export function getSupabase(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
@@ -26,7 +26,10 @@ export function getSupabase() {
   return supabaseClient;
 }
 
-export async function testSupabaseConnection(url, key) {
+export async function testSupabaseConnection(
+  url: string,
+  key: string
+): Promise<{ success: boolean; tablesCreated: boolean; message?: string; error?: string }> {
   try {
     const client = createClient(url, key, { auth: { persistSession: false } });
     const { error } = await client.from('products').select('id').limit(1);
@@ -38,20 +41,20 @@ export async function testSupabaseConnection(url, key) {
       return { success: false, tablesCreated: false, error: error.message };
     }
     return { success: true, tablesCreated: true, message: 'Connected and tables live!' };
-  } catch (err) {
-    return { success: false, tablesCreated: false, error: err.message };
+  } catch (err: any) {
+    return { success: false, tablesCreated: false, error: err?.message || 'Connection failed' };
   }
 }
 
 // ----------------- Supabase Auth Helpers -----------------
 
-export async function signInWithEmail(email, password) {
+export async function signInWithEmail(email: string, password: string) {
   const client = getSupabase();
   if (!client) throw new Error('Supabase client is not configured.');
   return await client.auth.signInWithPassword({ email, password });
 }
 
-export async function signUpWithEmail(email, password, metadata = {}) {
+export async function signUpWithEmail(email: string, password: string, metadata: Record<string, any> = {}) {
   const client = getSupabase();
   if (!client) throw new Error('Supabase client is not configured.');
   return await client.auth.signUp({
@@ -75,9 +78,8 @@ export async function getAuthSession() {
   return await client.auth.getSession();
 }
 
-export function onAuthChange(callback) {
+export function onAuthChange(callback: (event: AuthChangeEvent, session: Session | null) => void) {
   const client = getSupabase();
   if (!client) return { data: { subscription: { unsubscribe: () => {} } } };
   return client.auth.onAuthStateChange(callback);
 }
-

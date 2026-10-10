@@ -1,11 +1,17 @@
 import './globals.css';
+import type { Metadata } from 'next';
+import React from 'react';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Warehouse Inventory Management System | Next.js & Supabase',
   description: 'Enterprise Warehouse Management System tracking Finished Products, Raw Materials (HCL, Bleach, Sulphonic Oil, Shampoo Paste, TSP), Cartons, and Stickers.',
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <head>

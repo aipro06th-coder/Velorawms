@@ -8,15 +8,10 @@ import {
   Search,
   Download,
   Trash2,
-  Pencil,
-  AlertTriangle,
-  Boxes,
-  Layers,
-  ArrowUpRight,
-  TrendingUp,
-  Tag
+  Pencil
 } from 'lucide-react';
 import { getBottlesPerCarton } from './FilledCartonsInventory';
+import { BottlesInventoryProps, ProductSize, Product } from '../types';
 
 export default function BottlesInventory({
   productSizes = [],
@@ -35,11 +30,10 @@ export default function BottlesInventory({
   onEditSize,
   onDeleteSize,
   onClearAllData,
-  onExportCSV,
-  showToast
-}) {
+  onExportCSV
+}: BottlesInventoryProps) {
   // Helper matching functions
-  const isToiletItem = (s, p) => {
+  const isToiletItem = (s: ProductSize, p?: Product): boolean => {
     const cat = ((p?.category) || '').toLowerCase();
     const name = ((s?.product_name || p?.name) || '').toLowerCase();
     const sz = ((s?.size) || '').toLowerCase();
@@ -48,7 +42,7 @@ export default function BottlesInventory({
       cat.includes('tolie') || name.includes('tolie');
   };
 
-  const isDishwashItem = (s, p) => {
+  const isDishwashItem = (s: ProductSize, p?: Product): boolean => {
     const cat = ((p?.category) || '').toLowerCase();
     const name = ((s?.product_name || p?.name) || '').toLowerCase();
     const sz = ((s?.size) || '').toLowerCase();
@@ -58,14 +52,14 @@ export default function BottlesInventory({
       (cat.includes('bottle') && !cat.includes('bleach') && !cat.includes('harpic'));
   };
 
-  const isHarpicItem = (s, p) => {
+  const isHarpicItem = (s: ProductSize, p?: Product): boolean => {
     const cat = ((p?.category) || '').toLowerCase();
     const name = ((s?.product_name || p?.name) || '').toLowerCase();
     const sz = ((s?.size) || '').toLowerCase();
     return cat.includes('harpic') || name.includes('harpic') || sz.includes('harpic');
   };
 
-  const isBleachItem = (s, p) => {
+  const isBleachItem = (s: ProductSize, p?: Product): boolean => {
     const cat = ((p?.category) || '').toLowerCase();
     const name = ((s?.product_name || p?.name) || '').toLowerCase();
     const sz = ((s?.size) || '').toLowerCase();
@@ -73,13 +67,13 @@ export default function BottlesInventory({
   };
 
   // Filtered bottle products
-  const filtered = productSizes.filter(s => {
+  const filtered = productSizes.filter((s) => {
     const matchesSearch =
       !searchQuery ||
       (s.product_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (s.size || '').toLowerCase().includes(searchQuery.toLowerCase());
 
-    const prod = products.find(p => p.id === s.product_id);
+    const prod = products.find((p) => p.id === s.product_id);
 
     let matchesCategory = false;
     if (categoryFilter === 'ALL') {
@@ -116,7 +110,7 @@ export default function BottlesInventory({
 
   // Bottle Inventory KPIs
   const totalBottles = productSizes.reduce((acc, s) => acc + (s.bottle_quantity || 0), 0);
-  const totalValuation = productSizes.reduce((acc, s) => acc + ((s.bottle_quantity || 0) * (s.purchase_price || 0)), 0);
+  const totalValuation = productSizes.reduce((acc, s) => acc + ((s.bottle_quantity || 0) * (Number(s.purchase_price) || 0)), 0);
   const lowStockBottles = productSizes.filter(s => (s.bottle_quantity || 0) > 0 && (s.bottle_quantity || 0) <= (s.minimum_stock || 10)).length;
   const outOfStockBottles = productSizes.filter(s => (s.bottle_quantity || 0) <= 0).length;
 
@@ -339,7 +333,7 @@ export default function BottlesInventory({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
                     <Package size={40} style={{ margin: '0 auto 10px', opacity: 0.3, color: '#0284c7' }} />
                     <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>No Bottles Found</div>
                     <div style={{ fontSize: '0.85rem' }}>No bottle SKU matches your search or filter criteria.</div>
@@ -348,7 +342,7 @@ export default function BottlesInventory({
               ) : (
                 filtered.map((s) => {
                   const bpc = getBottlesPerCarton(s);
-                  const val = (s.bottle_quantity || 0) * (s.purchase_price || 0);
+                  const val = (s.bottle_quantity || 0) * (Number(s.purchase_price) || 0);
                   const isLow = (s.bottle_quantity || 0) > 0 && (s.bottle_quantity || 0) <= (s.minimum_stock || 10);
                   const isOut = (s.bottle_quantity || 0) <= 0;
 
