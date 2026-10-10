@@ -20,9 +20,32 @@ import {
   Archive,
   ArrowRight,
   FlaskConical,
-  Layers
+  Layers,
+  Boxes,
+  Calculator,
+  ArrowRightLeft,
+  Sparkles
 } from 'lucide-react';
 import { EmptyBottlesInventoryProps, EmptyBottle } from '../types';
+
+// Helper function to get bottles per carton for any bottle SKU
+export const getBottlesPerCartonForBottle = (bottle?: Partial<EmptyBottle> | null): number => {
+  if (bottle?.bottles_per_carton && Number(bottle.bottles_per_carton) > 0) {
+    return Number(bottle.bottles_per_carton);
+  }
+  const text = `${bottle?.name || ''} ${bottle?.size || ''} ${bottle?.category || ''}`.toLowerCase();
+  if (text.includes('4.5') || text.includes('gallon') || text.includes('can')) return 4;
+  if (text.includes('1.2') || text.includes('1.25') || text.includes('large')) return 6;
+  if (text.includes('250')) return 24;
+  if (text.includes('500') && (text.includes('dish') || text.includes('diswash'))) return 16;
+  if (text.includes('1l') || text.includes('1 l') || text.includes('1000') || text.includes('1 liter')) {
+    if (text.includes('harpic')) return 14;
+    return 15;
+  }
+  if (text.includes('harpic')) return 14;
+  if (text.includes('sweep') || text.includes('toilet') || text.includes('bleach') || text.includes('600')) return 12;
+  return 12;
+};
 
 // Default standard empty bottle presets for chemical and detergent bottling
 export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
@@ -33,6 +56,7 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
     size: '600ml Bottle',
     material: 'HDPE Angular Neck',
     cap_type: 'Angled Directional Nozzle Cap',
+    bottles_per_carton: 12,
     quantity: 1500,
     damaged_quantity: 12,
     minimum_stock: 500,
@@ -47,6 +71,7 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
     size: '1.2 Liter Bottle',
     material: 'HDPE Heavy Handle Bottle',
     cap_type: 'Heavy Child-Proof Screw Cap',
+    bottles_per_carton: 6,
     quantity: 850,
     damaged_quantity: 6,
     minimum_stock: 300,
@@ -61,6 +86,7 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
     size: '500ml Bottle',
     material: 'Clear Transparent PET',
     cap_type: 'Push-Pull Dispenser Cap',
+    bottles_per_carton: 16,
     quantity: 1250,
     damaged_quantity: 8,
     minimum_stock: 400,
@@ -75,6 +101,7 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
     size: '1 Liter Bottle',
     material: 'Clear Rigid PET Bottle',
     cap_type: 'Lotion Pump / Push-Pull Cap',
+    bottles_per_carton: 15,
     quantity: 920,
     damaged_quantity: 7,
     minimum_stock: 350,
@@ -89,6 +116,7 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
     size: '250ml Bottle',
     material: 'Compact Transparent PET',
     cap_type: 'Flip-Top Squeeze Cap',
+    bottles_per_carton: 24,
     quantity: 650,
     damaged_quantity: 4,
     minimum_stock: 250,
@@ -103,6 +131,7 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
     size: '4.5 Liter Can',
     material: 'HDPE Heavy Molded Gallon Can',
     cap_type: 'Wide Screw Cap with Inner Plug',
+    bottles_per_carton: 4,
     quantity: 210,
     damaged_quantity: 2,
     minimum_stock: 100,
@@ -117,6 +146,7 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
     size: '500ml / 600ml Bottle',
     material: 'HDPE Colored Angular Duck-Neck',
     cap_type: 'Precision Nozzle Cap',
+    bottles_per_carton: 14,
     quantity: 950,
     damaged_quantity: 8,
     minimum_stock: 350,
@@ -131,6 +161,7 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
     size: '600ml Bottle',
     material: 'HDPE Chemical Resistant Wall',
     cap_type: 'Vented Child-Resistant Cap',
+    bottles_per_carton: 12,
     quantity: 1150,
     damaged_quantity: 9,
     minimum_stock: 400,
@@ -145,6 +176,7 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
     size: '1.25 Liter Bottle',
     material: 'HDPE High Chemical Grade',
     cap_type: 'Vented Safety Screw Cap',
+    bottles_per_carton: 6,
     quantity: 520,
     damaged_quantity: 4,
     minimum_stock: 200,
@@ -157,6 +189,9 @@ export const DEFAULT_EMPTY_BOTTLES: EmptyBottle[] = [
 export default function EmptyBottlesInventory({
   emptyBottles = [],
   setEmptyBottles,
+  emptyCartons = [],
+  stickers = [],
+  productSizes = [],
   onStockIn,
   onStockOut,
   onAdjust,
@@ -223,6 +258,7 @@ export default function EmptyBottlesInventory({
     size: string;
     material: string;
     cap_type: string;
+    bottles_per_carton: number | string;
     quantity: number | string;
     minimum_stock: number | string;
     purchase_price: number | string;
@@ -233,6 +269,7 @@ export default function EmptyBottlesInventory({
     size: '600ml Bottle',
     material: 'HDPE Angular Neck',
     cap_type: 'Nozzle Cap',
+    bottles_per_carton: 12,
     quantity: 500,
     minimum_stock: 300,
     purchase_price: 18,
@@ -246,6 +283,7 @@ export default function EmptyBottlesInventory({
     size: string;
     material: string;
     cap_type: string;
+    bottles_per_carton: number | string;
     minimum_stock: number | string;
     purchase_price: number | string;
     supplier: string;
@@ -256,10 +294,101 @@ export default function EmptyBottlesInventory({
     size: '',
     material: '',
     cap_type: '',
+    bottles_per_carton: 12,
     minimum_stock: 300,
     purchase_price: 18,
     supplier: ''
   });
+
+  // Interactive Carton Packing & Filling Calculator State
+  const [calcSelectedId, setCalcSelectedId] = useState<string>('btl-sweep-600');
+  const [calcCustomBottles, setCalcCustomBottles] = useState<number | string>('');
+  const [calcCustomCartons, setCalcCustomCartons] = useState<number | string>('');
+
+  // Helper to find matching empty carton for a bottle
+  const getMatchingCartonForBottle = (b?: EmptyBottle | null) => {
+    if (!b || !emptyCartons || emptyCartons.length === 0) return null;
+    const bName = (b.name || '').toLowerCase();
+    const bSize = (b.size || '').toLowerCase();
+    return emptyCartons.find(c => {
+      const cName = (c.name || '').toLowerCase();
+      const cSize = (c.size || '').toLowerCase();
+      if (bName.includes('sweep') || bName.includes('toilet')) {
+        if (bSize.includes('1.2') || bName.includes('1.2')) return cName.includes('1.2') || cSize.includes('1.2');
+        return cName.includes('600') || cSize.includes('600') || cName.includes('sweep');
+      }
+      if (bName.includes('dish')) {
+        if (bSize.includes('250')) return cName.includes('250') || cSize.includes('250');
+        if (bSize.includes('1l') || bSize.includes('1 l') || bSize.includes('1000')) return cName.includes('1l') || cName.includes('1000') || cSize.includes('1');
+        if (bSize.includes('4.5')) return cName.includes('4.5') || cSize.includes('4.5');
+        return cName.includes('500') || cSize.includes('500');
+      }
+      if (bName.includes('harpic')) return cName.includes('harpic');
+      if (bName.includes('bleach')) {
+        if (bSize.includes('1.25')) return cName.includes('1.25') || cSize.includes('1.25');
+        return cName.includes('600') || cSize.includes('600');
+      }
+      return c.category === b.category;
+    }) || null;
+  };
+
+  // Helper to find matching label / sticker for a bottle
+  const getMatchingStickerForBottle = (b?: EmptyBottle | null) => {
+    if (!b) return null;
+    const bName = (b.name || '').toLowerCase();
+    const bSize = (b.size || '').toLowerCase();
+
+    if (stickers && stickers.length > 0) {
+      const found = stickers.find(s => {
+        const sName = (s.name || '').toLowerCase();
+        const sSize = (s.size || '').toLowerCase();
+        if (bName.includes('sweep') || bName.includes('toilet')) {
+          if (bSize.includes('1.2') || bName.includes('1.2')) return sName.includes('1.2') || sSize.includes('1.2');
+          return sName.includes('600') || sSize.includes('600') || sName.includes('sweep');
+        }
+        if (bName.includes('dish')) {
+          if (bSize.includes('250')) return sName.includes('250') || sSize.includes('250');
+          if (bSize.includes('1l') || bSize.includes('1 l') || bSize.includes('1000')) return sName.includes('1l') || sName.includes('1000') || sSize.includes('1');
+          if (bSize.includes('4.5')) return sName.includes('4.5') || sSize.includes('4.5');
+          return sName.includes('500') || sSize.includes('500');
+        }
+        if (bName.includes('harpic')) return sName.includes('harpic');
+        if (bName.includes('bleach')) return sName.includes('bleach');
+        return s.category === b.category;
+      });
+      if (found) return found;
+    }
+
+    if (productSizes && productSizes.length > 0) {
+      const foundSize = productSizes.find(ps => {
+        const psName = (ps.product_name || '').toLowerCase();
+        const psSize = (ps.size || ps.size_name || '').toLowerCase();
+        if (bName.includes('sweep') || bName.includes('toilet')) {
+          if (bSize.includes('1.2')) return psSize.includes('1.2');
+          return psSize.includes('600') || psName.includes('sweep');
+        }
+        if (bName.includes('dish')) {
+          if (bSize.includes('250')) return psSize.includes('250');
+          if (bSize.includes('1l') || bSize.includes('1 l')) return psSize.includes('1l') || psSize.includes('1');
+          if (bSize.includes('4.5')) return psSize.includes('4.5');
+          return psSize.includes('500');
+        }
+        if (bName.includes('harpic')) return psName.includes('harpic');
+        if (bName.includes('bleach')) return psName.includes('bleach');
+        return false;
+      });
+      if (foundSize) {
+        return {
+          id: foundSize.id,
+          name: `${foundSize.product_name} Sticker`,
+          quantity: foundSize.sticker_quantity || 0,
+          minimum_stock: foundSize.minimum_stock || 500
+        };
+      }
+    }
+
+    return null;
+  };
 
   // Calculate items with dynamic status
   const items = useMemo(() => {
@@ -272,6 +401,55 @@ export default function EmptyBottlesInventory({
       return { ...b, status };
     });
   }, [emptyBottles]);
+
+  // Active selected bottle for calculator
+  const activeCalcBottle = useMemo(() => {
+    return items.find(b => b.id === calcSelectedId) || items[0] || null;
+  }, [items, calcSelectedId]);
+
+  const activeCalcCapacity = useMemo(() => {
+    return getBottlesPerCartonForBottle(activeCalcBottle);
+  }, [activeCalcBottle]);
+
+  const activeStockBottles = Number(activeCalcBottle?.quantity || 0);
+  const activeStockFullCartons = Math.floor(activeStockBottles / (activeCalcCapacity || 1));
+  const activeStockLooseBottles = activeStockBottles % (activeCalcCapacity || 1);
+
+  // Matching packaging stocks for the active bottle
+  const activeMatchingCarton = useMemo(() => {
+    return getMatchingCartonForBottle(activeCalcBottle);
+  }, [activeCalcBottle, emptyCartons]);
+
+  const activeMatchingSticker = useMemo(() => {
+    return getMatchingStickerForBottle(activeCalcBottle);
+  }, [activeCalcBottle, stickers, productSizes]);
+
+  const activeCartonStock = Number(activeMatchingCarton?.quantity || 0);
+  const activeStickerStock = Number(activeMatchingSticker?.quantity || 0);
+
+  // How many cartons can be covered by available stickers (1 label per bottle)
+  const cartonsFromStickers = Math.floor(activeStickerStock / (activeCalcCapacity || 1));
+
+  // Overall bottleneck & max ready cartons that can be packed right now
+  const maxPossibleCartons = Math.min(
+    activeStockFullCartons,
+    activeCartonStock > 0 ? activeCartonStock : activeStockFullCartons,
+    activeStickerStock > 0 ? cartonsFromStickers : activeStockFullCartons
+  );
+
+  // Custom user input conversions
+  const customBottlesNum = parseInt(String(calcCustomBottles), 10);
+  const customBottlesToCartons = !isNaN(customBottlesNum) && customBottlesNum > 0
+    ? {
+        fullCartons: Math.floor(customBottlesNum / (activeCalcCapacity || 1)),
+        loose: customBottlesNum % (activeCalcCapacity || 1)
+      }
+    : null;
+
+  const customCartonsNum = parseInt(String(calcCustomCartons), 10);
+  const customCartonsToBottles = !isNaN(customCartonsNum) && customCartonsNum > 0
+    ? customCartonsNum * (activeCalcCapacity || 1)
+    : null;
 
   // Filter items
   const filtered = useMemo(() => {
@@ -316,6 +494,13 @@ export default function EmptyBottlesInventory({
     return items.filter(b => b.status === 'Low Stock' || b.status === 'Out of Stock').length;
   }, [items]);
 
+  const totalFillableCartons = useMemo(() => {
+    return items.reduce((acc, b) => {
+      const cap = getBottlesPerCartonForBottle(b);
+      return acc + Math.floor(Number(b.quantity || 0) / (cap || 1));
+    }, 0);
+  }, [items]);
+
   // Quick Preset Add Helper
   const handleApplyPreset = (preset: EmptyBottle) => {
     const existing = emptyBottles.find(b => b.id === preset.id || b.name === preset.name);
@@ -338,6 +523,7 @@ export default function EmptyBottlesInventory({
         size: preset.size,
         material: preset.material,
         cap_type: preset.cap_type,
+        bottles_per_carton: preset.bottles_per_carton || getBottlesPerCartonForBottle(preset),
         quantity: 500,
         damaged_quantity: 0,
         minimum_stock: preset.minimum_stock || 300,
@@ -465,6 +651,7 @@ export default function EmptyBottlesInventory({
       size: newBottleForm.size,
       material: newBottleForm.material,
       cap_type: newBottleForm.cap_type,
+      bottles_per_carton: parseInt(String(newBottleForm.bottles_per_carton), 10) || 12,
       quantity: parseInt(String(newBottleForm.quantity), 10) || 0,
       damaged_quantity: 0,
       minimum_stock: parseInt(String(newBottleForm.minimum_stock), 10) || 300,
@@ -487,6 +674,7 @@ export default function EmptyBottlesInventory({
       size: '600ml Bottle',
       material: 'HDPE Angular Neck',
       cap_type: 'Nozzle Cap',
+      bottles_per_carton: 12,
       quantity: 500,
       minimum_stock: 300,
       purchase_price: 18,
@@ -510,6 +698,7 @@ export default function EmptyBottlesInventory({
               size: editBottleForm.size,
               material: editBottleForm.material,
               cap_type: editBottleForm.cap_type,
+              bottles_per_carton: parseInt(String(editBottleForm.bottles_per_carton), 10) || 12,
               minimum_stock: parseInt(String(editBottleForm.minimum_stock), 10) || 300,
               purchase_price: parseFloat(String(editBottleForm.purchase_price)) || 0,
               supplier: editBottleForm.supplier
@@ -639,7 +828,7 @@ export default function EmptyBottlesInventory({
         </div>
 
         {/* KPIs Grid */}
-        <div className="cartons-kpi-grid" style={{ marginTop: '16px', marginBottom: '20px' }}>
+        <div className="cartons-kpi-grid" style={{ marginTop: '16px', marginBottom: '18px' }}>
           <div className="carton-kpi-card" style={{ '--card-accent': '#0284c7' } as React.CSSProperties}>
             <div className="carton-kpi-header">
               <span className="carton-kpi-label">Total Empty Bottles</span>
@@ -647,9 +836,24 @@ export default function EmptyBottlesInventory({
                 <Package size={18} />
               </div>
             </div>
-            <div className="carton-kpi-value">{totalQuantity.toLocaleString()}</div>
+            <div className="carton-kpi-value">{totalQuantity.toLocaleString()} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Pcs</span></div>
             <div className="carton-kpi-footer">
               <span className="carton-kpi-sub">Across {items.length} Bottle Shapes & Sizes</span>
+            </div>
+          </div>
+
+          <div className="carton-kpi-card" style={{ '--card-accent': '#7c3aed' } as React.CSSProperties}>
+            <div className="carton-kpi-header">
+              <span className="carton-kpi-label">Fillable Cartons Potential</span>
+              <div className="carton-kpi-icon" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+                <Boxes size={18} />
+              </div>
+            </div>
+            <div className="carton-kpi-value" style={{ color: '#7c3aed' }}>
+              {totalFillableCartons.toLocaleString()} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>Ctns</span>
+            </div>
+            <div className="carton-kpi-footer">
+              <span className="carton-kpi-sub">1 کارٹن کی گنجائش کے مطابق کل متوقع پیکنگ</span>
             </div>
           </div>
 
@@ -678,19 +882,292 @@ export default function EmptyBottlesInventory({
               <span className="carton-kpi-sub">Below Minimum Buffer Level</span>
             </div>
           </div>
+        </div>
 
-          <div className="carton-kpi-card" style={{ '--card-accent': '#e11d48' } as React.CSSProperties}>
-            <div className="carton-kpi-header">
-              <span className="carton-kpi-label">Damaged / Defective</span>
-              <div className="carton-kpi-icon" style={{ background: '#ffe4e6', color: '#e11d48' }}>
-                <AlertOctagon size={18} />
+        {/* ========================================================
+            COMPLETE 3-WAY PACKAGING & YIELD CALCULATOR WIDGET
+            (بوتل، لیبل اور کارٹن تناسب کیلکولیٹر)
+           ======================================================== */}
+        <div style={{
+          marginTop: '6px',
+          marginBottom: '20px',
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f0fdf4 50%, #eff6ff 100%)',
+          border: '1.5px solid #a7f3d0',
+          borderRadius: '14px',
+          padding: '16px 20px',
+          boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #059669, #10b981)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 3px 8px rgba(16, 185, 129, 0.25)'
+              }}>
+                <Calculator size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  Packaging & Carton Yield Calculator <span style={{ color: '#059669', fontSize: '0.85rem' }}>(بوتل، لیبل اور کارٹن کوریج تناسب)</span>
+                </h3>
+                <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '2px 0 0 0' }}>
+                  Check karein kitni empty bottles se kitne cartons pack hotay hain, labels kitni bottles cover kar saktay hain, aur empty boxes kitne hain.
+                </p>
               </div>
             </div>
-            <div className="carton-kpi-value">{totalDamaged.toLocaleString()}</div>
-            <div className="carton-kpi-footer">
-              <span className="carton-kpi-sub">Molding Flaws or In-Transit Crushed</span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Select Bottle SKU:</span>
+              <select
+                className="form-select"
+                style={{ padding: '6px 12px', fontSize: '0.85rem', fontWeight: 600, borderColor: '#94a3b8', minWidth: '240px' }}
+                value={calcSelectedId}
+                onChange={e => setCalcSelectedId(e.target.value)}
+              >
+                {items.map(b => {
+                  const cap = getBottlesPerCartonForBottle(b);
+                  return (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({cap} Btls/Ctn)
+                    </option>
+                  );
+                })}
+              </select>
             </div>
           </div>
+
+          {activeCalcBottle && (
+            <>
+              {/* 4 Core Comparison Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                {/* 1. Standard Packing Ratio */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1.5px solid #bfdbfe',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  boxShadow: '0 2px 6px rgba(59, 130, 246, 0.05)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase' }}>
+                      1 Carton Capacity
+                    </span>
+                    <span style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '0.7rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                      پیکنگ تناسب
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#1e3a8a' }}>
+                    {activeCalcCapacity} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#3b82f6' }}>Bottles / Ctn</span>
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px' }}>
+                    1 کارٹن میں <strong>{activeCalcCapacity}</strong> بوتلیں آتی ہیں
+                  </div>
+                </div>
+
+                {/* 2. Empty Bottles Stock */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1.5px solid #fed7aa',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  boxShadow: '0 2px 6px rgba(249, 115, 22, 0.05)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#9a3412', textTransform: 'uppercase' }}>
+                      Empty Bottles Stock
+                    </span>
+                    <span style={{ background: '#ffedd5', color: '#c2410c', fontSize: '0.7rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                      خالی بوتلیں
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#9a3412' }}>
+                    {activeStockBottles.toLocaleString()} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ea580c' }}>Pcs</span>
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 700, marginTop: '4px' }}>
+                    Can Fill: <strong>{activeStockFullCartons} Cartons</strong> (+{activeStockLooseBottles} loose)
+                  </div>
+                </div>
+
+                {/* 3. Labels / Stickers Stock */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1.5px solid #ddd6fe',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  boxShadow: '0 2px 6px rgba(124, 58, 237, 0.05)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#5b21b6', textTransform: 'uppercase' }}>
+                      Labels / Stickers
+                    </span>
+                    <span style={{ background: '#ede9fe', color: '#6d28d9', fontSize: '0.7rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                      لیبلز اسٹاک
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#5b21b6' }}>
+                    {activeStickerStock.toLocaleString()} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#7c3aed' }}>Labels</span>
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px' }}>
+                    Covers: <strong>{activeStickerStock.toLocaleString()} Bottles</strong> (~{cartonsFromStickers} Ctns)
+                  </div>
+                </div>
+
+                {/* 4. Empty Cartons Stock */}
+                <div style={{
+                  background: '#ffffff',
+                  border: '1.5px solid #bbf7d0',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  boxShadow: '0 2px 6px rgba(16, 185, 129, 0.05)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>
+                      Empty Cartons Stock
+                    </span>
+                    <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '0.7rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                      خالی ڈبے
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#166534' }}>
+                    {activeCartonStock > 0 ? activeCartonStock.toLocaleString() : 'N/A'} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#16a34a' }}>Boxes</span>
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px' }}>
+                    Can Pack: <strong>{(activeCartonStock * activeCalcCapacity).toLocaleString()} Bottles</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Production Balance Verdict Banner */}
+              <div style={{
+                background: '#ffffff',
+                border: '1.5px solid #86efac',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+                marginBottom: '12px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{
+                    fontSize: '1.2rem',
+                    background: '#ecfdf5',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid #a7f3d0'
+                  }}>
+                    📦
+                  </span>
+                  <div>
+                    <div style={{ fontSize: '0.94rem', fontWeight: 800, color: '#065f46' }}>
+                      حتمی پیکنگ تخمینہ (Max Ready Cartons):{' '}
+                      <span style={{ color: '#047857', fontSize: '1.1rem', textDecoration: 'underline' }}>
+                        {maxPossibleCartons} Cartons
+                      </span>{' '}
+                      ({(maxPossibleCartons * activeCalcCapacity).toLocaleString()} Bottles)
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                      {activeStockFullCartons > maxPossibleCartons && activeStickerStock < activeStockBottles && (
+                        <span style={{ color: '#dc2626', fontWeight: 700 }}>
+                          ⚠️ کمی (Bottleneck): Labels کم ہیں! مزید {(activeStockBottles - activeStickerStock).toLocaleString()} لیبلز درکار ہیں تا کہ باقی {activeStockFullCartons - maxPossibleCartons} کارٹن بھی بن سکیں۔
+                        </span>
+                      )}
+                      {activeStockFullCartons > maxPossibleCartons && activeCartonStock < activeStockFullCartons && (
+                        <span style={{ color: '#d97706', fontWeight: 700 }}>
+                          ⚠️ کمی (Bottleneck): Empty Cartons کم ہیں! مزید {activeStockFullCartons - activeCartonStock} خالی ڈبے درکار ہیں۔
+                        </span>
+                      )}
+                      {maxPossibleCartons === activeStockFullCartons && (
+                        <span style={{ color: '#059669', fontWeight: 700 }}>
+                          ✅ تمام پیکنگ میٹریل متوازن ہے! تمام {activeStockFullCartons} کارٹن مکمل طور پر پیک ہو سکتے ہیں۔
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '0.8rem', background: '#f8fafc', padding: '6px 12px', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontWeight: 600 }}>
+                  1 Carton = <strong>{activeCalcCapacity} Bottles</strong> + <strong>{activeCalcCapacity} Labels</strong> + <strong>1 Box</strong>
+                </div>
+              </div>
+
+              {/* Quick Interactive Custom Simulator */}
+              <div style={{
+                paddingTop: '10px',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                flexWrap: 'wrap'
+              }}>
+                <span style={{ fontSize: '0.76rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase' }}>
+                  ⚡ Quick Simulator:
+                </span>
+
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>If you have</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder={String(activeStockBottles)}
+                    value={calcCustomBottles}
+                    onChange={e => {
+                      setCalcCustomBottles(e.target.value);
+                      setCalcCustomCartons('');
+                    }}
+                    className="form-input"
+                    style={{ width: '90px', padding: '4px 8px', fontSize: '0.82rem', fontWeight: 700 }}
+                  />
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>bottles →</span>
+                  {customBottlesToCartons ? (
+                    <span className="badge badge-success" style={{ fontSize: '0.82rem', fontWeight: 800 }}>
+                      📦 {customBottlesToCartons.fullCartons} Cartons ({customBottlesToCartons.loose} loose) + Needs {customBottlesNum} Labels
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Type bottles to see cartons</span>
+                  )}
+                </div>
+
+                <span style={{ color: '#cbd5e1' }}>|</span>
+
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>To pack</span>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="100"
+                    value={calcCustomCartons}
+                    onChange={e => {
+                      setCalcCustomCartons(e.target.value);
+                      setCalcCustomBottles('');
+                    }}
+                    className="form-input"
+                    style={{ width: '80px', padding: '4px 8px', fontSize: '0.82rem', fontWeight: 700 }}
+                  />
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>cartons →</span>
+                  {customCartonsToBottles ? (
+                    <span className="badge badge-info" style={{ fontSize: '0.82rem', fontWeight: 800 }}>
+                      🍼 Needs {customCartonsToBottles.toLocaleString()} Bottles & {customCartonsToBottles.toLocaleString()} Labels
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Type cartons to see bottles & labels</span>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Filter & Search Bar */}
@@ -767,8 +1244,11 @@ export default function EmptyBottlesInventory({
                 <tr>
                   <th>Bottle SKU & Mold Name</th>
                   <th>Bottle Size</th>
-                  <th>Plastic Material & Cap</th>
+                  <th>1 Carton Packing</th>
                   <th>In Stock (Pcs)</th>
+                  <th>Fillable Cartons (تیار کارٹن)</th>
+                  <th>Matching Labels & Cartons</th>
+                  <th>Plastic Material & Cap</th>
                   <th>Defect / Damaged</th>
                   <th>Min Alert Buffer</th>
                   <th>Purchase Rate</th>
@@ -780,7 +1260,7 @@ export default function EmptyBottlesInventory({
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={10} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                    <td colSpan={13} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
                       <Package size={40} style={{ margin: '0 auto 10px', opacity: 0.3, color: '#0284c7' }} />
                       <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>No Empty Bottles Found</div>
                       <div style={{ fontSize: '0.85rem' }}>No empty bottle SKU matches your search or filter.</div>
@@ -791,6 +1271,13 @@ export default function EmptyBottlesInventory({
                     const isLow = bottle.status === 'Low Stock';
                     const isOut = bottle.status === 'Out of Stock';
                     const val = Number(bottle.quantity || 0) * Number(bottle.purchase_price || 0);
+
+                    const btlPerCtn = getBottlesPerCartonForBottle(bottle);
+                    const fullCartons = Math.floor(Number(bottle.quantity || 0) / (btlPerCtn || 1));
+                    const looseBottles = Number(bottle.quantity || 0) % (btlPerCtn || 1);
+
+                    const matchCtn = getMatchingCartonForBottle(bottle);
+                    const matchStk = getMatchingStickerForBottle(bottle);
 
                     return (
                       <tr key={bottle.id}>
@@ -820,12 +1307,20 @@ export default function EmptyBottlesInventory({
                           <span className="size-tag standard">{bottle.size}</span>
                         </td>
                         <td>
-                          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b' }}>
-                            {bottle.material}
-                          </div>
-                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                            Cap: {bottle.cap_type}
-                          </div>
+                          <span style={{
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: '6px',
+                            padding: '3px 8px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            📦 {btlPerCtn} Btls / Ctn
+                          </span>
                         </td>
                         <td>
                           <strong style={{
@@ -834,6 +1329,46 @@ export default function EmptyBottlesInventory({
                           }}>
                             {Number(bottle.quantity || 0).toLocaleString()} <span style={{ fontSize: '0.76rem', fontWeight: 600, color: '#64748b' }}>Pcs</span>
                           </strong>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{
+                              background: '#ecfdf5',
+                              color: '#047857',
+                              border: '1px solid #a7f3d0',
+                              borderRadius: '6px',
+                              padding: '3px 8px',
+                              fontSize: '0.86rem',
+                              fontWeight: 800,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              <Boxes size={14} />
+                              {fullCartons.toLocaleString()} Ctns
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: looseBottles > 0 ? '#d97706' : '#64748b' }}>
+                              {looseBottles > 0 ? `+${looseBottles} loose btls` : '0 loose'}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '0.78rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ color: '#6d28d9', fontWeight: 600 }}>
+                              🏷️ {matchStk ? `${Number(matchStk.quantity || 0).toLocaleString()} Labels` : 'No Label Link'}
+                            </span>
+                            <span style={{ color: '#15803d', fontWeight: 600 }}>
+                              📦 {matchCtn ? `${Number(matchCtn.quantity || 0).toLocaleString()} Boxes` : 'No Box Link'}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b' }}>
+                            {bottle.material}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                            Cap: {bottle.cap_type}
+                          </div>
                         </td>
                         <td>
                           <span style={{ color: Number(bottle.damaged_quantity || 0) > 0 ? '#e11d48' : '#94a3b8', fontWeight: 600 }}>
@@ -913,6 +1448,7 @@ export default function EmptyBottlesInventory({
                                   size: bottle.size,
                                   material: bottle.material,
                                   cap_type: bottle.cap_type,
+                                  bottles_per_carton: bottle.bottles_per_carton || getBottlesPerCartonForBottle(bottle),
                                   minimum_stock: bottle.minimum_stock,
                                   purchase_price: bottle.purchase_price,
                                   supplier: bottle.supplier
@@ -984,12 +1520,50 @@ export default function EmptyBottlesInventory({
                       padding: '10px',
                       marginBottom: '14px'
                     }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                         <span style={{ fontSize: '0.76rem', color: '#64748b' }}>Available Stock:</span>
                         <strong style={{ fontSize: '1rem', color: isOut ? '#e11d48' : isLow ? '#d97706' : '#0f172a' }}>
                           {Number(bottle.quantity || 0).toLocaleString()} Pcs
                         </strong>
                       </div>
+
+                      {/* 1 Carton Ratio & Fillable Cartons Highlight Box */}
+                      {(() => {
+                        const btlPerCtn = getBottlesPerCartonForBottle(bottle);
+                        const fullCartons = Math.floor(Number(bottle.quantity || 0) / (btlPerCtn || 1));
+                        const looseBottles = Number(bottle.quantity || 0) % (btlPerCtn || 1);
+                        const matchCtn = getMatchingCartonForBottle(bottle);
+                        const matchStk = getMatchingStickerForBottle(bottle);
+                        return (
+                          <div style={{
+                            background: '#ffffff',
+                            border: '1.5px solid #a7f3d0',
+                            borderRadius: '8px',
+                            padding: '8px 10px',
+                            marginBottom: '8px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px'
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.72rem', color: '#1e40af', fontWeight: 700 }}>
+                                📦 {btlPerCtn} Bottles / Ctn
+                              </span>
+                              <strong style={{ fontSize: '0.88rem', color: '#047857', fontWeight: 900 }}>
+                                Can Fill: {fullCartons} Ctns
+                              </strong>
+                            </div>
+                            <div style={{ fontSize: '0.68rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                              <span>{looseBottles > 0 ? `+${looseBottles} loose` : 'exact match'}</span>
+                              <span>
+                                {matchStk ? `🏷️ ${Number(matchStk.quantity || 0).toLocaleString()} Lbls` : ''}{' '}
+                                {matchCtn ? `| 📦 ${Number(matchCtn.quantity || 0).toLocaleString()} Box` : ''}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span style={{ fontSize: '0.76rem', color: '#64748b' }}>Defect/Damaged:</span>
                         <span style={{ fontSize: '0.76rem', color: '#e11d48', fontWeight: 600 }}>
@@ -1331,15 +1905,29 @@ export default function EmptyBottlesInventory({
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Supplier / Blow Molder</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="e.g. Apex Blow Molders Ltd"
-                    value={newBottleForm.supplier}
-                    onChange={e => setNewBottleForm(prev => ({ ...prev, supplier: e.target.value }))}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Bottles per Carton (1 کارٹن میں بوتلیں)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="form-input"
+                      placeholder="e.g. 12"
+                      value={newBottleForm.bottles_per_carton}
+                      onChange={e => setNewBottleForm(prev => ({ ...prev, bottles_per_carton: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Supplier / Blow Molder</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. Apex Blow Molders Ltd"
+                      value={newBottleForm.supplier}
+                      onChange={e => setNewBottleForm(prev => ({ ...prev, supplier: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">
@@ -1419,14 +2007,27 @@ export default function EmptyBottlesInventory({
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Supplier</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={editBottleForm.supplier}
-                    onChange={e => setEditBottleForm(prev => ({ ...prev, supplier: e.target.value }))}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Bottles per Carton (1 کارٹن میں بوتلیں)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="form-input"
+                      value={editBottleForm.bottles_per_carton}
+                      onChange={e => setEditBottleForm(prev => ({ ...prev, bottles_per_carton: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Supplier</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={editBottleForm.supplier}
+                      onChange={e => setEditBottleForm(prev => ({ ...prev, supplier: e.target.value }))}
+                    />
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">

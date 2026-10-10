@@ -4692,6 +4692,9 @@ CREATE POLICY "Allow public insert/update on inventory_transactions" ON inventor
             <EmptyBottlesInventory
               emptyBottles={emptyBottles}
               setEmptyBottles={setEmptyBottles}
+              emptyCartons={emptyCartons}
+              stickers={stickers}
+              productSizes={productSizes}
               onStockIn={handleStockInEmptyBottle}
               onStockOut={handleStockOutEmptyBottle}
               onAdjust={handleAdjustEmptyBottle}

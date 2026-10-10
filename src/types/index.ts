@@ -101,6 +101,7 @@ export interface EmptyBottle {
   size: string;
   material: string;
   cap_type: string;
+  bottles_per_carton?: number;
   quantity: number;
   damaged_quantity: number;
   minimum_stock: number;
@@ -256,6 +257,9 @@ export interface EmptyCartonsInventoryProps {
 export interface EmptyBottlesInventoryProps {
   emptyBottles?: EmptyBottle[];
   setEmptyBottles?: React.Dispatch<React.SetStateAction<EmptyBottle[]>>;
+  emptyCartons?: EmptyCarton[];
+  stickers?: StickerItem[];
+  productSizes?: ProductSize[];
   onStockIn?: (bottle: EmptyBottle, qty: number, meta?: any) => void;
   onStockOut?: (bottle: EmptyBottle, qty: number, meta?: any) => void;
   onAdjust?: (bottle: EmptyBottle, newQty: number, reason?: string) => void;
